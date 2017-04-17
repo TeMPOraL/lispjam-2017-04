@@ -1,0 +1,4 @@
+#+title: #:LISPJAM-2017-04-GAME1000
+#+startup: hidestars
+
+A game for Lisp Game Jam.
