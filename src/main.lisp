@@ -45,15 +45,12 @@
                    (sdl2:push-event :quit)))))
 
 (defmethod p2d:on-mouse-button-event ((game ljgame) x y button state)
-  (flet ((window->canvas (x y)
-           (values (float (* p2d:*canvas-width* (/ x p2d:*window-width*)))
-                   (float (* p2d:*canvas-height* (/ y p2d:*window-height*))))))
-    (when (and (= button 1)             ;FIXME DRY, c.f. sdl2:mouse-state-p
-               (= state 1)              ;FIXME DRY, c.f. sdl2:mouse-state
-               )
-      (multiple-value-bind (rx ry)
-          (window->canvas x y)
-        (click-handler rx ry)))))
+  (when (and (= button 1)               ;FIXME DRY, c.f. sdl2:mouse-state-p
+             (= state 1)                ;FIXME DRY, c.f. sdl2:mouse-state
+             )
+    (multiple-value-bind (rx ry)
+        (p2d:window->canvas x y)
+      (click-handler rx ry))))
 
 (defmethod p2d:on-tick ((game ljgame) dt)
   ;; TODO
