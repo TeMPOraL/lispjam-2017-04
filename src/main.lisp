@@ -53,15 +53,14 @@
       (click-handler rx ry))))
 
 (defmethod p2d:on-tick ((game ljgame) dt)
-  ;; TODO
-  )
+  (update-all-boids dt))
 
 (defmethod p2d:on-idle ((game ljgame) dt)
   ;; TODO
   )
 
 (defmethod p2d:on-render ((game ljgame) dt)
-  ;; TODO
+  (draw-all-boids)
 
   (p2dg:with-color (1 0 0)
     (gl:with-pushed-matrix
