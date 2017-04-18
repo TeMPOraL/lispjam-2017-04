@@ -33,7 +33,7 @@
 
 (defun click-handler (x y)
   (add-boid x y)
-  (log:info *boids*))
+  (log:trace *boids*))
 
 (defun update-all-boids (dt)
   (let ((com (com)))
@@ -76,8 +76,8 @@
   (with-slots (position velocity color)
       boid
     (gl:with-pushed-matrix
-      #+nil(p2dglu:rotatez* something)
       (p2dglu:translate2 position)
       (p2dglu:color4 color)
-      (p2dglu:scale2-uniform 4)
+      (p2dglu:rotatez* (- (p2dm:vector-angle-2d velocity) (/ pi 2)))
+      (gl:scale 4 8 4)
       (p2dglu:draw-triangle))))
