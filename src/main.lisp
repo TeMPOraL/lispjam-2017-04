@@ -62,6 +62,9 @@
 (defmethod p2d:on-render ((game ljgame) dt)
   (draw-all-boids)
 
+  (draw-debug-vectors)
+  (clear-debug-vectors)
+
   (p2dg:with-color (1 0 0)
     (gl:with-pushed-matrix
       (gl:translate 400 300 0)
