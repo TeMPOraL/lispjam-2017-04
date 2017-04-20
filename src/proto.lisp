@@ -18,6 +18,7 @@
   (setf *debug-vectors* '()))
 
 (defun ddv (start vector)
+  "Draw debug (velocity) vector, i.e. a line from `START' to `START' + `VECTOR'."
   (push (cons start vector) *debug-vectors*)
   vector)
 
@@ -97,29 +98,47 @@
 
 
 ;;; Behavioral code
+
+;;; Behaviour protocol:
+;;; IN: current boid, perceived world
+;;; OUT: desired *movement direction* (sorta like velocity)
+;;;
+;;; Let the behaviours reprioritize themselves dynamically.
+(defparameter +behaviour-priority-min+ 0.0)
+(defparameter +behaviour-priority-max+ 1.0)
+
+(defun static-priority (vector priority)
+  (p2dm:vector-of-length vector priority))
+
+(defun lerp-priority (vector factor &optional (min-priority +behaviour-priority-min+) (max-priority +behaviour-priority-max+))
+  (p2dm:vector-of-length vector (alexandria:lerp factor min-priority max-priority)))
+
 (defun make-default-boid-behaviours ()
-  (list #+nil(lambda (boid world)                 ; cohesion
-          (declare (ignore boid))
-          (com (boids world)))
-        #+nil(lambda (boid world)                 ; alignment
+  (list (lambda (boid world)                 ; cohesion
+          (com boid (boids world)))
+        (lambda (boid world)                 ; alignment
           (align (boids world)))
         (lambda (boid world)                 ; separation
           (separate boid (boids world)))))
 
-(defun com (boids)
+(defun com (boid all-boids)
   "Center of mass of `BOIDS'."
-  (let ((boids-cnt (length boids)))
+  (let ((boids-cnt (length all-boids)))
     (if (> boids-cnt 0)
-        (p2dm:scaled-vector (reduce #'p2dm:add-vectors boids :key #'entity-position)
-                            (/ 1.0 boids-cnt))
+        (static-priority (ddv (entity-position boid)
+                              (p2dm:subtract-vectors (p2dm:scaled-vector (reduce #'p2dm:add-vectors all-boids :key #'entity-position)
+                                                                         (/ 1.0 boids-cnt))
+                                                     (entity-position boid)))
+                         0.5)
         (p2dm:make-vector-2d))))
 
 (defun align (boids)
   "Average velocity vector of `BOIDS'."
   (let ((boids-cnt (length boids)))
     (if (> boids-cnt 0)
-        (p2dm:scaled-vector (reduce #'p2dm:add-vectors boids :key #'entity-velocity)
-                            (/ 1.0 boids-cnt))
+        (static-priority (p2dm:scaled-vector (reduce #'p2dm:add-vectors boids :key #'entity-velocity)
+                                             (/ 1.0 boids-cnt))
+                         0.5)
         (p2dm:make-vector-2d))))
 
 (defun separate (boid all-boids)
@@ -131,12 +150,13 @@
                                        (> distance +min-boid-separation+))))
                                all-boids))
          (too-close-cnt (length too-close)))
-    (p2dm:subtract-vectors (entity-position boid)
-                           (if (> too-close-cnt 0)
-                               (ddv (entity-position boid)
-                                    (p2dm:scaled-vector (reduce #'p2dm:add-vectors too-close :key #'entity-position)
-                                                        (/ 1.0 too-close-cnt)))
-                               (p2dm:make-vector-2d)))))
+
+    (if (> too-close-cnt 0)
+        (static-priority (p2dm:subtract-vectors (entity-position boid)
+                                (p2dm:scaled-vector (reduce #'p2dm:add-vectors too-close :key #'entity-position)
+                                                    (/ 1.0 too-close-cnt)))
+                         1.0)
+        (p2dm:make-vector-2d))))
 
 
 
@@ -148,9 +168,8 @@
         (boids *world*)))
 
 
-(defun steering (position velocity target)
-  (let* ((desired (p2dm:subtract-vectors target position))
-         (steering (p2dm:subtract-vectors desired velocity)))
+(defun steering (velocity desired)
+  (let ((steering (p2dm:subtract-vectors (p2dm:scaled-vector desired +max-boid-steering+) velocity)))
     (p2dm:clamped-vector steering +max-boid-steering+)))
 
 (defun update-boid (boid dt)
@@ -160,7 +179,7 @@
              (p2dm:add-to-vector velocity (p2dm:scaled-vector force dt))
              (p2dm:clamp-vector velocity +max-boid-speed+)))
       (p2dm:add-to-vector position (p2dm:scaled-vector velocity dt))
-      (apply-force (steering position velocity (apply-behaviours boid *world*))))))
+      (apply-force (steering velocity (apply-behaviours boid *world*))))))
 
 (defun draw-boid (boid)
   (with-slots (position velocity color)
