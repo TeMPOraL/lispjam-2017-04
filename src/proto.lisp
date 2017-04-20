@@ -8,27 +8,37 @@
 (defparameter +max-boid-steering+ 30.0)
 (defparameter +max-boid-speed+ 30.0)
 (defparameter +max-boid-separation+ 50)
-(defparameter +min-boid-separation+ 10)
+(defparameter +min-boid-separation+ 20)
+
+(defparameter +boid-perception-range+ 100)
 
 
 ;; Debug
+(defvar *debug-draw-vectors* nil "Toggle - draw debug vectors, or not.")
 (defvar *debug-vectors* '())
+
+(defparameter +debug-colors-alist+ `((:desired . ,(p2dg:make-color-4 0 0 0 1))
+                                     (:cohesion . ,(p2dg:make-color-4 1 0 0 1))
+                                     (:alignment . ,(p2dg:make-color-4 0 1 0 1))
+                                     (:separation . ,(p2dg:make-color-4 0 0 1 0))))
 
 (defun clear-debug-vectors ()
   (setf *debug-vectors* '()))
 
-(defun ddv (start vector)
+(defun ddv (start vector color)
   "Draw debug (velocity) vector, i.e. a line from `START' to `START' + `VECTOR'."
-  (push (cons start vector) *debug-vectors*)
+  (push (list start vector color) *debug-vectors*)
   vector)
 
 (defun draw-debug-vectors ()
-  (loop for v in *debug-vectors*
-     do (gl:with-pushed-matrix
-          (p2dglu:translate2 (car v))
-          (gl:with-primitive :lines
-            (gl:vertex 0.0 0.0)
-            (gl:vertex (p2dm:vec-x (cdr v)) (p2dm:vec-y (cdr v)))))))
+  (when *debug-draw-vectors*
+   (loop for v in *debug-vectors*
+      do (gl:with-pushed-matrix
+           (p2dglu:color4 (cdr (assoc (third v) +debug-colors-alist+)))
+           (p2dglu:translate2 (first v))
+           (gl:with-primitive :lines
+             (gl:vertex 0.0 0.0)
+             (gl:vertex (p2dm:vec-x (second v)) (p2dm:vec-y (second v))))))))
 
 
 ;;; World
@@ -39,7 +49,7 @@
           :accessor boids)
 
    (food :initform '()
-         :initarg food
+         :initarg :food
          :accessor food)))
 
 (defparameter *world* (make-instance 'world))
@@ -53,7 +63,7 @@
              :initform (p2dm:make-vector-2d 0.0 0.0)
              :accessor entity-velocity)
    (color :initarg :color
-          :initform (p2dg:make-color-4 1 0 0 1)
+          :initform (p2dg:make-color-4 0.5 0.5 0.2 1)
           :accessor entity-color)))
 
 
@@ -65,8 +75,13 @@
                :accessor boid-behaviours)))
 
 (defmethod perceive ((boid boid) (world world))
-  (declare (ignore boid))
-  world)
+  (with-slots (position)
+      boid
+    (make-instance 'world
+                   :boids (remove-if (lambda (other)
+                                       (> (p2dm:distance-between-vectors position (entity-position other)) +boid-perception-range+))
+                                     (boids world))
+                   :food (food world))))
 
 (defmethod apply-behaviours ((boid boid) (world world))
   (let ((seen-world (perceive boid world))
@@ -117,7 +132,7 @@
   (list (lambda (boid world)                 ; cohesion
           (com boid (boids world)))
         (lambda (boid world)                 ; alignment
-          (align (boids world)))
+          (align boid (boids world)))
         (lambda (boid world)                 ; separation
           (separate boid (boids world)))))
 
@@ -128,16 +143,19 @@
         (static-priority (ddv (entity-position boid)
                               (p2dm:subtract-vectors (p2dm:scaled-vector (reduce #'p2dm:add-vectors all-boids :key #'entity-position)
                                                                          (/ 1.0 boids-cnt))
-                                                     (entity-position boid)))
+                                                     (entity-position boid))
+                              :cohesion)
                          0.5)
         (p2dm:make-vector-2d))))
 
-(defun align (boids)
+(defun align (boid boids)
   "Average velocity vector of `BOIDS'."
   (let ((boids-cnt (length boids)))
     (if (> boids-cnt 0)
-        (static-priority (p2dm:scaled-vector (reduce #'p2dm:add-vectors boids :key #'entity-velocity)
-                                             (/ 1.0 boids-cnt))
+        (static-priority (ddv (entity-position boid)
+                              (p2dm:scaled-vector (reduce #'p2dm:add-vectors boids :key #'entity-velocity)
+                                                  (/ 1.0 boids-cnt))
+                              :alignment)
                          0.5)
         (p2dm:make-vector-2d))))
 
@@ -152,9 +170,11 @@
          (too-close-cnt (length too-close)))
 
     (if (> too-close-cnt 0)
-        (static-priority (p2dm:subtract-vectors (entity-position boid)
-                                (p2dm:scaled-vector (reduce #'p2dm:add-vectors too-close :key #'entity-position)
-                                                    (/ 1.0 too-close-cnt)))
+        (static-priority (ddv (entity-position boid)
+                              (p2dm:subtract-vectors (entity-position boid)
+                                                     (p2dm:scaled-vector (reduce #'p2dm:add-vectors too-close :key #'entity-position)
+                                                                         (/ 1.0 too-close-cnt)))
+                              :separation)
                          1.0)
         (p2dm:make-vector-2d))))
 
@@ -163,7 +183,8 @@
 (defun add-boid (x y)
   (push (make-instance 'boid
                        :position (p2dm:make-vector-2d x y)
-                       :velocity (p2dm:make-vector-2d 0.0 30.0)
+                       :velocity (p2dm:rotated-vector-2d (p2dm:make-vector-2d 30.0 0.0)
+                                                         (p2dm:random-float 0.0 p2dm:+2pi+))
                        :boid-behaviours (make-default-boid-behaviours))
         (boids *world*)))
 
@@ -179,7 +200,9 @@
              (p2dm:add-to-vector velocity (p2dm:scaled-vector force dt))
              (p2dm:clamp-vector velocity +max-boid-speed+)))
       (p2dm:add-to-vector position (p2dm:scaled-vector velocity dt))
-      (apply-force (steering velocity (apply-behaviours boid *world*))))))
+      (let ((desired (apply-behaviours boid *world*)))
+        (ddv position (p2dm:scaled-vector desired 10.0) :desired)
+        (apply-force (steering velocity desired))))))
 
 (defun draw-boid (boid)
   (with-slots (position velocity color)

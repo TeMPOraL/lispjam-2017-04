@@ -42,7 +42,9 @@
 
       ;; direct keydown events go here
       (on-key-down :scancode-escape
-                   (sdl2:push-event :quit)))))
+                   (sdl2:push-event :quit))
+      (on-key-down :scancode-f5
+                   (setf *debug-draw-vectors* (not *debug-draw-vectors*))))))
 
 (defmethod p2d:on-mouse-button-event ((game ljgame) x y button state)
   (when (and (= button 1)               ;FIXME DRY, c.f. sdl2:mouse-state-p
