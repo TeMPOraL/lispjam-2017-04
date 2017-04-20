@@ -7,7 +7,7 @@
 
 (defparameter +max-boid-steering+ 60.0)
 (defparameter +max-boid-speed+ 60.0)
-(defparameter +min-boid-separation+ 20)
+(defparameter +min-boid-separation+ 30)
 
 (defparameter +min-boid-distance-to-game-area-boundary+ 30)
 
@@ -108,8 +108,12 @@
 (defun static-priority (vector priority)
   (p2dm:vector-of-length vector priority))
 
-(defun lerp-priority (vector factor &optional (min-priority +behaviour-priority-min+) (max-priority +behaviour-priority-max+))
-  (p2dm:vector-of-length vector (alexandria:lerp factor min-priority max-priority)))
+(defun linear-repulsion (radius distance)
+  (float (clamp (/ (- radius distance) radius) 0 1)))
+
+(defun aggressive-repulsion (radius distance)
+  ;; TODO figure it out and make it work.
+  )
 
 (defun make-default-boid-behaviours ()
   (list (lambda (boid world)                 ; cohesion
@@ -133,7 +137,7 @@
                                                                          (/ 1.0 boids-cnt))
                                                      (entity-position boid))
                               :cohesion)
-                         0.4)
+                         0.2)
         (p2dm:make-vector-2d))))
 
 (defun align (boid boids)
@@ -144,7 +148,7 @@
                               (p2dm:scaled-vector (reduce #'p2dm:add-vectors boids :key #'entity-velocity)
                                                   (/ 1.0 boids-cnt))
                               :alignment)
-                         0.4)
+                         0.3)
         (p2dm:make-vector-2d))))
 
 (defun separate (boid all-boids)
@@ -158,12 +162,17 @@
          (too-close-cnt (length too-close)))
 
     (if (> too-close-cnt 0)
-        (static-priority (ddv (entity-position boid)
-                              (p2dm:subtract-vectors (entity-position boid)
-                                                     (p2dm:scaled-vector (reduce #'p2dm:add-vectors too-close :key #'entity-position)
-                                                                         (/ 1.0 too-close-cnt)))
-                              :separation)
-                         1.0)
+        (let* ((too-close-center (p2dm:scaled-vector (reduce #'p2dm:add-vectors too-close :key #'entity-position)
+                                                     (/ 1.0 too-close-cnt)))
+               (too-close-center-dist (p2dm:distance-between-vectors (entity-position boid)
+                                                                     too-close-center))
+               (lr (linear-repulsion +min-boid-separation+ too-close-center-dist)))
+          (static-priority (ddv (entity-position boid)
+                                (p2dm:scaled-vector (p2dm:subtract-vectors (entity-position boid)
+                                                                           too-close-center)
+                                                    lr)
+                                :separation)
+                           lr))
         (p2dm:make-vector-2d))))
 
 (defun avoid-walls (boid)
@@ -185,12 +194,15 @@
   "Behaviour to run away from `PLAYER'."
   (or
    (when player
-     (let ((pos (entity-position boid))
-           (player-pos (entity-position player)))
+     (let* ((pos (entity-position boid))
+            (player-pos (entity-position player))
+            (distance (p2dm:distance-between-vectors pos player-pos))
+            (lr (linear-repulsion (boid-perception-range boid) distance)))
        (static-priority (ddv pos
-                             (p2dm:subtract-vectors pos player-pos)
+                             (p2dm:scaled-vector (p2dm:subtract-vectors pos player-pos)
+                                                 lr)
                              :avoid-player)
-                        1.0)))
+                        lr)))
    (p2dm:make-vector-2d)))
 
 
