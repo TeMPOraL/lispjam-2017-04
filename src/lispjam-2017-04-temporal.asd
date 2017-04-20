@@ -26,6 +26,8 @@
   :components ((:file "packages")
                (:file "version")
 
+               (:file "debug")
+
                (:file "proto")
 
                (:file "main")))

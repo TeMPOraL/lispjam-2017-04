@@ -36,7 +36,9 @@
   (macrolet ((on-key-down (scancode &body code)
                `(when (and (eql key-code ,scancode)
                            (sdl2:key-down-p state))
-                  ,@code)))
+                  ,@code))
+             (toggle (what)
+               `(setf ,what (not ,what))))
     (let ((key-code (sdl2:scancode-symbol (sdl2:scancode-value key))))
       (log:trace key state key-code repeat)
 
@@ -44,7 +46,9 @@
       (on-key-down :scancode-escape
                    (sdl2:push-event :quit))
       (on-key-down :scancode-f5
-                   (setf *debug-draw-vectors* (not *debug-draw-vectors*))))))
+                   (toggle *debug-draw-vectors*))
+      (on-key-down :scancode-f6
+                   (toggle *debug-draw-perception*)))))
 
 (defmethod p2d:on-mouse-button-event ((game ljgame) x y button state)
   (when (and (= button 1)               ;FIXME DRY, c.f. sdl2:mouse-state-p
@@ -55,7 +59,8 @@
       (click-handler rx ry))))
 
 (defmethod p2d:on-tick ((game ljgame) dt)
-  (update-all-boids dt))
+  (update-all-boids dt)
+  (update-player dt))
 
 (defmethod p2d:on-idle ((game ljgame) dt)
   ;; TODO
@@ -63,15 +68,10 @@
 
 (defmethod p2d:on-render ((game ljgame) dt)
   (draw-all-boids)
+  (draw-player)
 
-  (draw-debug-vectors)
-  (clear-debug-vectors)
-
-  (p2dg:with-color (1 0 0)
-    (gl:with-pushed-matrix
-      (gl:translate 400 300 0)
-      (gl:scale 10 10 10)
-      (p2dglu:draw-triangle))))
+  (draw-debug-markers)
+  (clear-debug-markers))
 
 
 

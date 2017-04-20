@@ -14,34 +14,6 @@
 (defparameter +boid-perception-range+ 50)
 
 
-;; Debug
-(defvar *debug-draw-vectors* nil "Toggle - draw debug vectors, or not.")
-(defvar *debug-vectors* '())
-
-(defparameter +debug-colors-alist+ `((:desired . ,(p2dg:make-color-4 0 0 0 1))
-                                     (:cohesion . ,(p2dg:make-color-4 1 0 0 1))
-                                     (:alignment . ,(p2dg:make-color-4 0 1 0 1))
-                                     (:separation . ,(p2dg:make-color-4 0 0 1 0))))
-
-(defun clear-debug-vectors ()
-  (setf *debug-vectors* '()))
-
-(defun ddv (start vector color)
-  "Draw debug (velocity) vector, i.e. a line from `START' to `START' + `VECTOR'."
-  (push (list start vector color) *debug-vectors*)
-  vector)
-
-(defun draw-debug-vectors ()
-  (when *debug-draw-vectors*
-   (loop for v in *debug-vectors*
-      do (gl:with-pushed-matrix
-           (p2dglu:color4 (cdr (assoc (third v) +debug-colors-alist+)))
-           (p2dglu:translate2 (first v))
-           (gl:with-primitive :lines
-             (gl:vertex 0.0 0.0)
-             (gl:vertex (p2dm:vec-x (second v)) (p2dm:vec-y (second v))))))))
-
-
 ;;; World
 
 (defclass world ()
@@ -51,9 +23,11 @@
 
    (food :initform '()
          :initarg :food
-         :accessor food)))
+         :accessor food)
 
-(defparameter *world* (make-instance 'world))
+   (player :initform (error "Player needs to be specified explicitly.")
+           :initarg :player
+           :accessor player)))
 
 
 (defclass entity ()
@@ -68,21 +42,44 @@
           :accessor entity-color)))
 
 
+(defclass player (entity)
+  ((orientation :initarg :orientation
+                :initform 0.0
+                :accessor player-orientation)))
+
+(defun make-default-player ()
+  (make-instance 'player
+                 :position (p2dm:make-vector-2d (/ p2d:*canvas-width* 2.0) (/ p2d:*canvas-height* 2.0))
+                 :color (p2dg:make-color-4 1.0 0.0 0.0 1.0)))
+
+
+(defparameter *world* (make-instance 'world
+                                     :player (make-default-player)))
+
+
 ;;; Boids
 
 (defclass boid (entity)
   ((behaviours :initarg :boid-behaviours
                :initform '()
-               :accessor boid-behaviours)))
+               :accessor boid-behaviours)
+   (perception-range :initarg :perception-range
+                     :initform +boid-perception-range+
+                     :accessor boid-perception-range)))
 
 (defmethod perceive ((boid boid) (world world))
-  (with-slots (position)
+  (with-slots (position perception-range)
       boid
-    (make-instance 'world
-                   :boids (remove-if (lambda (other)
-                                       (> (p2dm:distance-between-vectors position (entity-position other)) +boid-perception-range+))
-                                     (boids world))
-                   :food (food world))))
+    (flet ((can-see-point (point)       ;TODO expand to limited forward vision
+             (< (p2dm:distance-between-vectors position point) perception-range)))
+      (ddp position perception-range :sight-range)
+      (make-instance 'world
+                     :boids (remove-if-not #'can-see-point
+                                           (boids world)
+                                           :key #'entity-position)
+                     :food (food world)
+                     :player (when (can-see-point (entity-position (player world)))
+                               (player world))))))
 
 (defmethod apply-behaviours ((boid boid) (world world))
   (let ((seen-world (perceive boid world))
@@ -96,21 +93,6 @@
   (print-unreadable-object (boid stream :type t :identity t)
     (let ((position (slot-value boid 'position)))
      (format stream "(~A ~A)" (p2dm:vec-x position) (p2dm:vec-y position)))))
-
-
-
-(defun click-handler (x y)
-  (add-boid x y)
-  (log:trace (boids *world*)))
-
-(defun update-all-boids (dt)
-  (let ((boids (boids *world*)))
-    (loop for boid in boids
-       do (update-boid boid dt))))
-
-(defun draw-all-boids ()
-  (loop for boid in (boids *world*)
-     do (draw-boid boid)))
 
 
 ;;; Behavioral code
@@ -137,7 +119,10 @@
         (lambda (boid world)                 ; separation
           (separate boid (boids world)))
         (lambda (boid world)                 ; wall avoidance
-          (avoid-walls boid))))
+          (avoid-walls boid))
+        (lambda (boid world)
+          (avoid-player boid (player world)) ; player avoidance
+          )))
 
 (defun com (boid all-boids)
   "Center of mass of `BOIDS'."
@@ -195,6 +180,54 @@
                           (when (< ypos +min-boid-distance-to-game-area-boundary+) 1.0)
                           (when (< (- p2d:*canvas-height* ypos) +min-boid-distance-to-game-area-boundary+) -1.0)
                           0.0))))
+
+(defun avoid-player (boid player)
+  "Behaviour to run away from `PLAYER'."
+  (or
+   (when player
+     (let ((pos (entity-position boid))
+           (player-pos (entity-position player)))
+       (static-priority (ddv pos
+                             (p2dm:subtract-vectors pos player-pos)
+                             :avoid-player)
+                        1.0)))
+   (p2dm:make-vector-2d)))
+
+
+
+(defun click-handler (x y)
+  (add-boid x y)
+  (log:trace (boids *world*)))
+
+(defun update-all-boids (dt)
+  (let ((boids (boids *world*)))
+    (loop for boid in boids
+       do (update-boid boid dt))))
+
+(defun draw-all-boids ()
+  (loop for boid in (boids *world*)
+     do (draw-boid boid)))
+
+(defun update-player (dt)
+  (with-slots (position velocity orientation color)
+      (player *world*)
+
+    ;; input
+
+    ;; physics
+    (p2dm:add-to-vector position (p2dm:scaled-vector velocity dt))
+    ;; TODO rotation, stuff.
+))
+
+(defun draw-player ()
+  (with-slots (position velocity orientation color)
+      (player *world*)
+    (gl:with-pushed-matrix
+      (p2dglu:translate2 position)
+      (p2dglu:color4 color)
+      (p2dglu:rotatez* orientation)
+      (gl:scale 8 10 8)
+      (p2dglu:draw-triangle))))
 
 
 
