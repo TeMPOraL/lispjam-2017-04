@@ -5,12 +5,13 @@
 
 ;;; Conf
 
-(defparameter +max-boid-steering+ 30.0)
-(defparameter +max-boid-speed+ 30.0)
-(defparameter +max-boid-separation+ 50)
+(defparameter +max-boid-steering+ 60.0)
+(defparameter +max-boid-speed+ 60.0)
 (defparameter +min-boid-separation+ 20)
 
-(defparameter +boid-perception-range+ 100)
+(defparameter +min-boid-distance-to-game-area-boundary+ 30)
+
+(defparameter +boid-perception-range+ 50)
 
 
 ;; Debug
@@ -134,7 +135,9 @@
         (lambda (boid world)                 ; alignment
           (align boid (boids world)))
         (lambda (boid world)                 ; separation
-          (separate boid (boids world)))))
+          (separate boid (boids world)))
+        (lambda (boid world)                 ; wall avoidance
+          (avoid-walls boid))))
 
 (defun com (boid all-boids)
   "Center of mass of `BOIDS'."
@@ -145,7 +148,7 @@
                                                                          (/ 1.0 boids-cnt))
                                                      (entity-position boid))
                               :cohesion)
-                         0.5)
+                         0.4)
         (p2dm:make-vector-2d))))
 
 (defun align (boid boids)
@@ -156,7 +159,7 @@
                               (p2dm:scaled-vector (reduce #'p2dm:add-vectors boids :key #'entity-velocity)
                                                   (/ 1.0 boids-cnt))
                               :alignment)
-                         0.5)
+                         0.4)
         (p2dm:make-vector-2d))))
 
 (defun separate (boid all-boids)
@@ -177,6 +180,21 @@
                               :separation)
                          1.0)
         (p2dm:make-vector-2d))))
+
+(defun avoid-walls (boid)
+  "Behaviour to limit `BOID' to gameplay area."
+  (let* ((position (entity-position boid))
+         (xpos (p2dm:vec-x position))
+         (ypos (p2dm:vec-y position)))
+
+    (p2dm:make-vector-2d (or
+                          (when (< xpos +min-boid-distance-to-game-area-boundary+) 1.0)
+                          (when (< (- p2d:*canvas-width* xpos) +min-boid-distance-to-game-area-boundary+) -1.0)
+                          0.0)
+                         (or
+                          (when (< ypos +min-boid-distance-to-game-area-boundary+) 1.0)
+                          (when (< (- p2d:*canvas-height* ypos) +min-boid-distance-to-game-area-boundary+) -1.0)
+                          0.0))))
 
 
 
