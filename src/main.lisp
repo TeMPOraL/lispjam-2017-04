@@ -59,17 +59,14 @@
       (click-handler rx ry))))
 
 (defmethod p2d:on-tick ((game ljgame) dt)
-  (update-all-boids dt)
-  (update-player dt))
+  (update-world dt))
 
 (defmethod p2d:on-idle ((game ljgame) dt)
   ;; TODO
   )
 
 (defmethod p2d:on-render ((game ljgame) dt)
-  (draw-all-boids)
-  (draw-player)
-
+  (draw-world)
   (draw-debug-markers)
   (clear-debug-markers))
 

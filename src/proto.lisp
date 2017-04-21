@@ -46,6 +46,14 @@
           :initform (p2dg:make-color-4 0.5 0.5 0.2 1)
           :accessor entity-color)))
 
+(defmethod draw-entity ((entity entity))
+  (with-slots (position color)
+      entity
+    (gl:with-pushed-matrix
+      (p2dglu:translate2 position)
+      (p2dglu:color4 color)
+      (p2dglu:draw-square))))
+
 
 (defclass player (entity)
   ((orientation :initarg :orientation
@@ -57,6 +65,11 @@
    (angular-speed :initarg :speed
                   :initform p2dm:+pi+
                   :accessor player-angular-speed)))
+
+(defmethod draw-entity ((player player))
+  (with-slots (position orientation color)
+      player
+    (draw-player position orientation color)))
 
 (defun make-default-player ()
   (make-instance 'player
@@ -100,10 +113,29 @@
        do (p2dm:add-to-vector sum (funcall b boid seen-world)))
     sum))
 
+(defmethod draw-entity ((boid boid))
+  (with-slots (position velocity color)
+      boid
+    (draw-boid position (- (p2dm:vector-angle-2d velocity) (/ pi 2)) color)))
+
 (defmethod print-object ((boid boid) stream)
   (print-unreadable-object (boid stream :type t :identity t)
     (let ((position (slot-value boid 'position)))
-     (format stream "(~A ~A)" (p2dm:vec-x position) (p2dm:vec-y position)))))
+      (format stream "(~A ~A)" (p2dm:vec-x position) (p2dm:vec-y position)))))
+
+
+(defclass sheep (boid)
+  ((hunger :initarg :hunger
+           :initform 1.0
+           :accessor sheep-hunger)
+   (blackp :initarg :blackp
+           :initform nil
+           :accessor sheep-black-p)))
+
+(defmethod draw-entity ((sheep sheep))
+  (with-slots (position velocity color hunger blackp)
+      sheep
+    (draw-sheep position (- (p2dm:vector-angle-2d velocity) (/ pi 2)) color)))
 
 
 ;;; Behavioral code
@@ -224,6 +256,14 @@
   (add-boid x y)
   (log:trace (boids *world*)))
 
+(defun update-world (dt)
+  (update-all-boids dt)
+  (update-player dt))
+
+(defun draw-world ()
+  (draw-all-boids)
+  (draw-entity (player *world*)))
+
 (defun update-all-boids (dt)
   (let ((boids (boids *world*)))
     (loop for boid in boids
@@ -231,7 +271,7 @@
 
 (defun draw-all-boids ()
   (loop for boid in (boids *world*)
-     do (draw-boid boid)))
+     do (draw-entity boid)))
 
 (defun update-player (dt)
   (with-slots (position velocity orientation color speed angular-speed)
@@ -257,20 +297,10 @@
                                        speed))
     (p2dm:add-to-vector position (p2dm:scaled-vector velocity dt))))
 
-(defun draw-player ()
-  (with-slots (position velocity orientation color)
-      (player *world*)
-    (gl:with-pushed-matrix
-      (p2dglu:translate2 position)
-      (p2dglu:color4 color)
-      (p2dglu:rotatez* (- orientation (/ p2dm:+pi+ 2)))
-      (gl:scale 7 10 7)
-      (p2dglu:draw-triangle))))
-
 
 
 (defun add-boid (x y)
-  (push (make-instance 'boid
+  (push (make-instance 'sheep
                        :position (p2dm:make-vector-2d x y)
                        :velocity (p2dm:rotated-vector-2d (p2dm:make-vector-2d 30.0 0.0)
                                                          (p2dm:random-float 0.0 p2dm:+2pi+))
@@ -293,18 +323,15 @@
         (ddv position (p2dm:scaled-vector desired 10.0) :desired)
         (apply-force (steering velocity desired))))))
 
-(defun draw-boid (boid)
-  (with-slots (position velocity color)
-      boid
-    (draw-sheep position (- (p2dm:vector-angle-2d velocity) (/ pi 2)) color)
-    #+nil(gl:with-pushed-matrix
-      (p2dglu:translate2 position)
-      (p2dglu:color4 color)
-      (p2dglu:rotatez* (- (p2dm:vector-angle-2d velocity) (/ pi 2)))
-      (gl:scale 4 8 4)
-      (p2dglu:draw-triangle))))
-
 
+
+(defun draw-boid (position orientation color)
+  (gl:with-pushed-matrix
+    (p2dglu:translate2 position)
+    (p2dglu:color4 color)
+    (p2dglu:rotatez* orientation)
+    (gl:scale 4 8 4)
+    (p2dglu:draw-triangle)))
 
 (defun draw-sheep (position orientation color)
   (gl:with-pushed-matrix
@@ -316,3 +343,11 @@
     (gl:translate 0 1 0)
     (gl:scale 0.5 0.5 0.5)
     (p2dglu:draw-circle)))
+
+(defun draw-player (position orientation color)
+  (gl:with-pushed-matrix
+    (p2dglu:translate2 position)
+    (p2dglu:color4 color)
+    (p2dglu:rotatez* (- orientation (/ p2dm:+pi+ 2)))
+    (gl:scale 7 10 7)
+    (p2dglu:draw-triangle)))

@@ -12,7 +12,7 @@ Gameplay outline clarifies itself like this:
 
 To implement, in order of MVP-importance:
 
-- [ ] player movement
+- [X] player movement
 - [ ] hunger, pastures
 - [ ] better gfx for sheep (instead of triangle)
 - [ ] sheep house (full ship stay there)
