@@ -34,6 +34,23 @@
            :initarg :player
            :accessor player)))
 
+(defclass perceived-world ()
+  ((friendlies :initform '()
+               :initarg :friendlies
+               :accessor friendlies)
+
+   (dangers :initform '()
+            :initarg :dangers
+            :accessor dangers)
+
+   (food :initform '()
+         :initarg :food
+         :accessor food)
+
+   (player :initform (error "Player needs to be specified explicitly.")
+           :initarg :player
+           :accessor player)))
+
 
 (defclass entity ()
   ((position :initarg :position
@@ -97,10 +114,10 @@
     (flet ((can-see-point (point)       ;TODO expand to limited forward vision
              (< (p2dm:distance-between-vectors position point) perception-range)))
       (ddp position perception-range :sight-range)
-      (make-instance 'world
-                     :boids (remove-if-not #'can-see-point
-                                           (boids world)
-                                           :key #'entity-position)
+      (make-instance 'perceived-world
+                     :friendlies (remove-if-not #'can-see-point
+                                                (boids world)
+                                                :key #'entity-position)
                      :food (food world)
                      :player (when (can-see-point (entity-position (player world)))
                                (player world))))))
@@ -160,11 +177,11 @@
 
 (defun make-default-boid-behaviours ()
   (list (lambda (boid world)                 ; cohesion
-          (com boid (boids world)))
+          (com boid (friendlies world)))
         (lambda (boid world)                 ; alignment
-          (align boid (boids world)))
+          (align boid (friendlies world)))
         (lambda (boid world)                 ; separation
-          (separate boid (boids world)))
+          (separate boid (friendlies world)))
         (lambda (boid world)                 ; wall avoidance
           (avoid-walls boid))
         (lambda (boid world)
