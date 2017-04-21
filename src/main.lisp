@@ -25,7 +25,12 @@
   (gl:enable :line-smooth)
   (gl:hint :line-smooth-hint :nicest)
   (gl:enable :polygon-smooth)
-  (gl:hint :polygon-smooth-hint :nicest))
+  (gl:hint :polygon-smooth-hint :nicest)
+
+
+  ;; game initialize
+  (setf *world* (make-instance 'world
+                               :player (make-default-player))))
 
 (defmethod p2d:deinitialize ((game ljgame))
   ;; TODO

@@ -21,6 +21,9 @@
 (defparameter +sheep-hungry-color+ (p2dg:make-color-4 0 0 1 1))
 (defparameter +sheep-full-color+ (p2dg:make-color-4 0 1 0 1))
 
+(defparameter +sheep-size+ 2.0)
+(defparameter +sheep-grazing-cooldown-time+ 2.0)
+
 (defparameter +food-color+ (p2dg:make-color-4 0 0.4 0 1))
 (defparameter +food-size+ 2.0)
 
@@ -90,7 +93,10 @@
 (defclass food (entity)
   ((food-size :initarg :food-size
               :initform +food-size+
-              :accessor food-size))
+              :accessor food-size)
+   (eatenp :initarg :food-eaten-p
+           :initform nil
+           :accessor food-eaten-p))
   (:default-initargs
    :color +food-color+))
 
@@ -126,8 +132,7 @@
                  :color (p2dg:make-color-4 1.0 0.0 0.0 1.0)))
 
 
-(defparameter *world* (make-instance 'world
-                                     :player (make-default-player)))
+(defparameter *world* nil)
 
 
 ;;; Boids
@@ -147,9 +152,10 @@
              (< (p2dm:distance-between-vectors position point) perception-range)))
       (ddp position perception-range :sight-range)
       (make-instance 'perceived-world
-                     :friendlies (remove-if-not #'can-see-point
-                                                (boids world)
-                                                :key #'entity-position)
+                     :friendlies (remove-if-not (lambda (other)
+                                                  (and (can-see-point (entity-position other))
+                                                       (not (eq other boid))))
+                                                (boids world))
                      :food (remove-if-not #'can-see-point
                                           (food world)
                                           :key #'entity-position)
@@ -179,9 +185,9 @@
   ((hunger :initarg :hunger
            :initform 1.0
            :accessor sheep-hunger)
-   (blackp :initarg :blackp
-           :initform nil
-           :accessor sheep-black-p)))
+   (grazing-cooldown :initarg :grazing-cooldown
+                     :initform 0.0
+                     :accessor sheep-grazing-cooldown)))
 
 (defmethod draw-entity ((sheep sheep))
   (with-slots (position velocity hunger blackp)
@@ -254,8 +260,7 @@
   (let* ((too-close (remove-if (lambda (b)
                                  (let ((distance (p2dm:distance-between-vectors (entity-position b)
                                                                                 (entity-position boid))))
-                                   (or (eq boid b)
-                                       (> distance +min-boid-separation+))))
+                                   (or (> distance +min-boid-separation+))))
                                all-boids))
          (too-close-cnt (length too-close)))
 
@@ -316,6 +321,14 @@
                         (sheep-hunger boid)))
      (p2dm:make-vector-2d))))
 
+;; (defun wander-around (boid other-boids)
+;;   "Behaviour of random wandering for `BOID' when lonely."
+;;   (or
+;;    (when (= 0 (length other-boids))
+;;      (let )
+;;      )
+;;    (p2dm:make-vector-2d)))
+
 
 (defun key-pressed-p (scancode)
   (sdl2:keyboard-state-p scancode))
@@ -328,8 +341,11 @@
   (add-food x y))
 
 (defun update-world (dt)
-  (update-all-boids dt)
-  (update-player dt))
+  (update-all-boids *world* dt)
+  (update-player (player *world*) dt)
+
+  (handle-collisions *world*)
+  (remove-eaten-food *world*))
 
 (defun draw-world ()
   (draw-all-boids)
@@ -340,8 +356,8 @@
   (loop for food in (food *world*)
      do (draw-entity food)))
 
-(defun update-all-boids (dt)
-  (let ((boids (boids *world*)))
+(defun update-all-boids (world dt)
+  (let ((boids (boids world)))
     (loop for boid in boids
        do (update-boid boid dt))))
 
@@ -349,9 +365,9 @@
   (loop for boid in (boids *world*)
      do (draw-entity boid)))
 
-(defun update-player (dt)
+(defun update-player (player dt)
   (with-slots (position velocity orientation color speed angular-speed)
-      (player *world*)
+      player
 
     ;; input
     (setf speed (cond ((key-pressed-p :scancode-up)
@@ -376,6 +392,21 @@
     ;; clamp position to game boundaries
     (setf (p2dm:vec-x position) (p2dm:clamp (p2dm:vec-x position) 0.0 (float p2d:*canvas-width*))
           (p2dm:vec-y position) (p2dm:clamp (p2dm:vec-y position) 0.0 (float p2d:*canvas-height*)))))
+
+(defun spheres-collide-p (pos1 pos2 r1 r2)
+  (< (p2dm:distance-between-vectors-squared pos1 pos2)
+     (+ (p2dm:square r1) (p2dm:square r2))))
+
+(defun handle-collisions (world)
+  (dolist (sheep (boids world))
+    (dolist (food (food world))
+      (when (and (not (food-eaten-p food))
+                 (spheres-collide-p (entity-position sheep) (entity-position food) +sheep-size+ (food-size food)))
+        (setf (sheep-grazing-cooldown sheep) +sheep-grazing-cooldown-time+
+              (food-eaten-p food) t)))))
+
+(defun remove-eaten-food (world)
+  (setf (food world) (delete-if #'food-eaten-p (food world))))
 
 
 
