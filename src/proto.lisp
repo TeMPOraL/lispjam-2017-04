@@ -390,8 +390,8 @@
     (p2dm:add-to-vector position (p2dm:scaled-vector velocity dt))
 
     ;; clamp position to game boundaries
-    (setf (p2dm:vec-x position) (p2dm:clamp (p2dm:vec-x position) 0.0 (float p2d:*canvas-width*))
-          (p2dm:vec-y position) (p2dm:clamp (p2dm:vec-y position) 0.0 (float p2d:*canvas-height*)))))
+    (p2dm:clampf (p2dm:vec-x position) 0.0 (float p2d:*canvas-width*))
+    (p2dm:clampf (p2dm:vec-y position) 0.0 (float p2d:*canvas-height*))))
 
 (defun spheres-collide-p (pos1 pos2 r1 r2)
   (< (p2dm:distance-between-vectors-squared pos1 pos2)

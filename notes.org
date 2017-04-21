@@ -21,6 +21,7 @@ To implement, in order of MVP-importance:
 - [X] limit player to game area
 - [ ] sheep house (full sheep stay there)
 - [ ] hunger, pastures
+- [ ] sheeps wandering when lonely
 - [X] better gfx for sheep (instead of triangle)
 - [ ] wolves
 - [ ] grazing makes sheep stop
@@ -31,3 +32,6 @@ To implement, in order of MVP-importance:
 - [ ] time display
 - [ ] wolf packs (flocking behaviour)
 - [ ] obstacles
+
+Also
+- [ ] REMOVE UNNECESSARY DEPENDENCIES FOR P2D BEFORE SUBMITTING.
