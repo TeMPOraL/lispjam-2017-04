@@ -371,7 +371,11 @@
     (incf orientation (* angular-speed dt))
     (setf velocity (p2dm:scaled-vector (p2dm:rotated-vector-2d (p2dm:make-vector-2d 1.0 0.0) orientation)
                                        speed))
-    (p2dm:add-to-vector position (p2dm:scaled-vector velocity dt))))
+    (p2dm:add-to-vector position (p2dm:scaled-vector velocity dt))
+
+    ;; clamp position to game boundaries
+    (setf (p2dm:vec-x position) (p2dm:clamp (p2dm:vec-x position) 0.0 (float p2d:*canvas-width*))
+          (p2dm:vec-y position) (p2dm:clamp (p2dm:vec-y position) 0.0 (float p2d:*canvas-height*)))))
 
 
 
