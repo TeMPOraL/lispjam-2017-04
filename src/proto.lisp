@@ -13,6 +13,11 @@
 
 (defparameter +boid-perception-range+ 50)
 
+(defparameter +player-base-speed+ 30)
+(defparameter +player-running-speed+ 60)
+(defparameter +player-slow-speed+ 10)
+(defparameter +player-angular-speed+ p2dm:+pi+)
+
 
 ;;; World
 
@@ -45,7 +50,13 @@
 (defclass player (entity)
   ((orientation :initarg :orientation
                 :initform 0.0
-                :accessor player-orientation)))
+                :accessor player-orientation)
+   (speed :initarg :speed
+          :initform 30.0
+          :accessor player-speed)
+   (angular-speed :initarg :speed
+                  :initform p2dm:+pi+
+                  :accessor player-angular-speed)))
 
 (defun make-default-player ()
   (make-instance 'player
@@ -206,6 +217,8 @@
    (p2dm:make-vector-2d)))
 
 
+(defun key-pressed-p (scancode)
+  (sdl2:keyboard-state-p scancode))
 
 (defun click-handler (x y)
   (add-boid x y)
@@ -221,15 +234,28 @@
      do (draw-boid boid)))
 
 (defun update-player (dt)
-  (with-slots (position velocity orientation color)
+  (with-slots (position velocity orientation color speed angular-speed)
       (player *world*)
 
     ;; input
+    (setf speed (cond ((key-pressed-p :scancode-up)
+                       +player-running-speed+)
+                      ((key-pressed-p :scancode-down)
+                       +player-slow-speed+)
+                      (t
+                       +player-base-speed+))
+          angular-speed (cond ((key-pressed-p :scancode-left)
+                               (+ +player-angular-speed+))
+                              ((key-pressed-p :scancode-right)
+                               (- +player-angular-speed+))
+                              (t
+                               0.0)))
 
     ;; physics
-    (p2dm:add-to-vector position (p2dm:scaled-vector velocity dt))
-    ;; TODO rotation, stuff.
-))
+    (incf orientation (* angular-speed dt))
+    (setf velocity (p2dm:scaled-vector (p2dm:rotated-vector-2d (p2dm:make-vector-2d 1.0 0.0) orientation)
+                                       speed))
+    (p2dm:add-to-vector position (p2dm:scaled-vector velocity dt))))
 
 (defun draw-player ()
   (with-slots (position velocity orientation color)
@@ -237,8 +263,8 @@
     (gl:with-pushed-matrix
       (p2dglu:translate2 position)
       (p2dglu:color4 color)
-      (p2dglu:rotatez* orientation)
-      (gl:scale 8 10 8)
+      (p2dglu:rotatez* (- orientation (/ p2dm:+pi+ 2)))
+      (gl:scale 7 10 7)
       (p2dglu:draw-triangle))))
 
 
