@@ -1,0 +1,26 @@
+#+title: Notes
+#+startup: hidestars
+
+In-repo, because my Dropbox client decided to break.
+
+Gameplay outline clarifies itself like this:
+
+- sheep want to wander around and eat on pasture
+- wolves want to eat sheep
+- both of them fear you and want to escape
+- your goal is to lead sheep to pastures, chase away wolves
+
+To implement, in order of MVP-importance:
+
+- [ ] player movement
+- [ ] hunger, pastures
+- [ ] better gfx for sheep (instead of triangle)
+- [ ] sheep house (full ship stay there)
+- [ ] wolves
+- [ ] grazing makes sheep stop
+- [ ] full sheep don't graze
+- [ ] wolves kill sheep on contact
+- [ ] eating kills wolves
+- [ ] points display
+- [ ] time display
+- [ ] wolf packs (flocking behaviour)

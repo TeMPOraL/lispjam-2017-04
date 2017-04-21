@@ -270,9 +270,23 @@
 (defun draw-boid (boid)
   (with-slots (position velocity color)
       boid
-    (gl:with-pushed-matrix
+    (draw-sheep position (- (p2dm:vector-angle-2d velocity) (/ pi 2)) color)
+    #+nil(gl:with-pushed-matrix
       (p2dglu:translate2 position)
       (p2dglu:color4 color)
       (p2dglu:rotatez* (- (p2dm:vector-angle-2d velocity) (/ pi 2)))
       (gl:scale 4 8 4)
       (p2dglu:draw-triangle))))
+
+
+
+(defun draw-sheep (position orientation color)
+  (gl:with-pushed-matrix
+    (p2dglu:color4 color)               ;FIXME blending? how?
+    (p2dglu:translate2 position)
+    (p2dglu:rotatez* orientation)
+    (gl:scale 4 6 4)
+    (p2dglu:draw-circle)
+    (gl:translate 0 1 0)
+    (gl:scale 0.5 0.5 0.5)
+    (p2dglu:draw-circle)))
