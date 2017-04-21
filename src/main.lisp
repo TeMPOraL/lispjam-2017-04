@@ -51,12 +51,21 @@
                    (toggle *debug-draw-perception*)))))
 
 (defmethod p2d:on-mouse-button-event ((game ljgame) x y button state)
-  (when (and (= button 1)               ;FIXME DRY, c.f. sdl2:mouse-state-p
-             (= state 1)                ;FIXME DRY, c.f. sdl2:mouse-state
-             )
-    (multiple-value-bind (rx ry)
-        (p2d:window->canvas x y)
-      (click-handler rx ry))))
+  (multiple-value-bind (rx ry)
+      (p2d:window->canvas x y)
+
+    ;; NOTE, those are all debugging handlers
+    (when (and (= button 1)             ;FIXME DRY, c.f. sdl2:mouse-state-p
+               (= state 1)              ;FIXME DRY, c.f. sdl2:mouse-state
+               )
+      (click-handler rx ry))
+
+    (when (and (= button 2)
+               (= state 1))
+      (right-click-handler rx ry))
+
+    ;; TODO button 3 will be for wolves :).
+    ))
 
 (defmethod p2d:on-tick ((game ljgame) dt)
   (update-world dt))

@@ -10,12 +10,18 @@ Gameplay outline clarifies itself like this:
 - both of them fear you and want to escape
 - your goal is to lead sheep to pastures, chase away wolves
 
+W/ hunger, gameplay idea outline:
+- ships have different start colors which are only shown when they're full;
+- there are different safe houses for different-colored sheep
+- only sheep of matching color stay (are saved) on a given pasture
+
 To implement, in order of MVP-importance:
 
 - [X] player movement
+- [ ] limit player to game area
+- [ ] sheep house (full sheep stay there)
 - [ ] hunger, pastures
-- [ ] better gfx for sheep (instead of triangle)
-- [ ] sheep house (full ship stay there)
+- [X] better gfx for sheep (instead of triangle)
 - [ ] wolves
 - [ ] grazing makes sheep stop
 - [ ] full sheep don't graze
@@ -24,3 +30,4 @@ To implement, in order of MVP-importance:
 - [ ] points display
 - [ ] time display
 - [ ] wolf packs (flocking behaviour)
+- [ ] obstacles

@@ -21,6 +21,9 @@
 (defparameter +sheep-hungry-color+ (p2dg:make-color-4 0 0 1 1))
 (defparameter +sheep-full-color+ (p2dg:make-color-4 0 1 0 1))
 
+(defparameter +food-color+ (p2dg:make-color-4 0 0.4 0 1))
+(defparameter +food-size+ 2.0)
+
 
 ;;; World
 
@@ -32,6 +35,14 @@
    (food :initform '()
          :initarg :food
          :accessor food)
+
+   (houses :initform '()
+           :initarg :houses
+           :accessor houses)
+
+   (obstacles :initform '()
+              :initarg :obstacles
+              :accessor obstacles)
 
    (player :initform (error "Player needs to be specified explicitly.")
            :initarg :player
@@ -71,6 +82,24 @@
       entity
     (gl:with-pushed-matrix
       (p2dglu:translate2 position)
+      (p2dglu:color4 color)
+      (p2dglu:draw-square))))
+
+
+;;; Food
+(defclass food (entity)
+  ((food-size :initarg :food-size
+              :initform +food-size+
+              :accessor food-size))
+  (:default-initargs
+   :color +food-color+))
+
+(defmethod draw-entity ((food food))
+  (with-slots (position color food-size)
+      food
+    (gl:with-pushed-matrix
+      (p2dglu:translate2 position)
+      (p2dglu:scale2-uniform food-size)
       (p2dglu:color4 color)
       (p2dglu:draw-square))))
 
@@ -121,7 +150,9 @@
                      :friendlies (remove-if-not #'can-see-point
                                                 (boids world)
                                                 :key #'entity-position)
-                     :food (food world)
+                     :food (remove-if-not #'can-see-point
+                                          (food world)
+                                          :key #'entity-position)
                      :player (when (can-see-point (entity-position (player world)))
                                (player world))))))
 
@@ -278,13 +309,21 @@
   (add-boid x y)
   (log:trace (boids *world*)))
 
+(defun right-click-handler (x y)
+  (add-food x y))
+
 (defun update-world (dt)
   (update-all-boids dt)
   (update-player dt))
 
 (defun draw-world ()
   (draw-all-boids)
+  (draw-food)
   (draw-entity (player *world*)))
+
+(defun draw-food ()
+  (loop for food in (food *world*)
+     do (draw-entity food)))
 
 (defun update-all-boids (dt)
   (let ((boids (boids *world*)))
@@ -329,6 +368,10 @@
                        :boid-behaviours (make-default-boid-behaviours))
         (boids *world*)))
 
+(defun add-food (x y)
+  (push (make-instance 'food
+                       :position (p2dm:make-vector-2d x y))
+        (food *world*)))
 
 (defun steering (velocity desired)
   (let ((steering (p2dm:subtract-vectors (p2dm:scaled-vector desired +max-boid-steering+) velocity)))
