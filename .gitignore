@@ -1,3 +1,4 @@
 *.log
 perf-report.html
 *.fasl
+sb-sprof.txt
