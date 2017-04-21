@@ -18,6 +18,9 @@
 (defparameter +player-slow-speed+ 10)
 (defparameter +player-angular-speed+ p2dm:+pi+)
 
+(defparameter +sheep-hungry-color+ (p2dg:make-color-4 0 0 1 1))
+(defparameter +sheep-full-color+ (p2dg:make-color-4 0 1 0 1))
+
 
 ;;; World
 
@@ -150,9 +153,9 @@
            :accessor sheep-black-p)))
 
 (defmethod draw-entity ((sheep sheep))
-  (with-slots (position velocity color hunger blackp)
+  (with-slots (position velocity hunger blackp)
       sheep
-    (draw-sheep position (- (p2dm:vector-angle-2d velocity) (/ pi 2)) color)))
+    (draw-sheep position (- (p2dm:vector-angle-2d velocity) (/ pi 2)) (p2dg:lerp-color hunger +sheep-full-color+ +sheep-hungry-color+))))
 
 
 ;;; Behavioral code
@@ -171,9 +174,11 @@
 (defun linear-repulsion (radius distance)
   (float (clamp (/ (- radius distance) radius) 0 1)))
 
-(defun aggressive-repulsion (radius distance)
-  ;; TODO figure it out and make it work.
-  )
+(defun aggressive-repulsion (radius distance &optional (factor 10.0))
+  ;; y = - 2^(-10(1-x)) + 1
+  (let ((x (clamp (/ distance radius) 0 1)))
+    (values (float (1+ (- (expt 2 (* (- factor) (- 1 x))))))
+            (float x))))
 
 (defun make-default-boid-behaviours ()
   (list (lambda (boid world)                 ; cohesion
@@ -216,7 +221,7 @@
   (let* ((too-close (remove-if (lambda (b)
                                  (let ((distance (p2dm:distance-between-vectors (entity-position b)
                                                                                 (entity-position boid))))
-                                   (or (< distance p2dm:+epsilon+)
+                                   (or (eq boid b)
                                        (> distance +min-boid-separation+))))
                                all-boids))
          (too-close-cnt (length too-close)))
@@ -226,7 +231,7 @@
                                                      (/ 1.0 too-close-cnt)))
                (too-close-center-dist (p2dm:distance-between-vectors (entity-position boid)
                                                                      too-close-center))
-               (lr (linear-repulsion +min-boid-separation+ too-close-center-dist)))
+               (lr (aggressive-repulsion +min-boid-separation+ too-close-center-dist)))
           (static-priority (ddv (entity-position boid)
                                 (p2dm:scaled-vector (p2dm:subtract-vectors (entity-position boid)
                                                                            too-close-center)
@@ -257,7 +262,7 @@
      (let* ((pos (entity-position boid))
             (player-pos (entity-position player))
             (distance (p2dm:distance-between-vectors pos player-pos))
-            (lr (linear-repulsion (boid-perception-range boid) distance)))
+            (lr (aggressive-repulsion (boid-perception-range boid) distance 6)))
        (static-priority (ddv pos
                              (p2dm:scaled-vector (p2dm:subtract-vectors pos player-pos)
                                                  lr)
