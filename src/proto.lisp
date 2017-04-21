@@ -221,8 +221,10 @@
         (lambda (boid world)                 ; wall avoidance
           (avoid-walls boid))
         (lambda (boid world)
-          (avoid-player boid (player world)) ; player avoidance
-          )))
+          (avoid-player boid (player world))) ; player avoidance
+        (lambda (boid world)
+          (chase-food boid (food world))) ; food chasing
+        ))
 
 (defun com (boid all-boids)
   "Center of mass of `BOIDS'."
@@ -300,6 +302,19 @@
                              :avoid-player)
                         lr)))
    (p2dm:make-vector-2d)))
+
+(defun chase-food (boid food)           ;FIXME works only on sheep; ensure no other boids happen to use it.
+  "Behaviour to chase `FOOD'."
+  (let ((food-cnt (length food)))
+    (or
+     (when (> food-cnt 0)
+       (static-priority (ddv (entity-position boid)
+                             (p2dm:subtract-vectors (p2dm:scaled-vector (reduce #'p2dm:add-vectors food :key #'entity-position)
+                                                                        (/ 1.0 food-cnt))
+                                                    (entity-position boid))
+                             :food-chasing)
+                        (sheep-hunger boid)))
+     (p2dm:make-vector-2d))))
 
 
 (defun key-pressed-p (scancode)

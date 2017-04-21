@@ -13,6 +13,7 @@
                                      (:alignment . ,(p2dg:make-color-4 0 1 0 1))
                                      (:separation . ,(p2dg:make-color-4 0 0 1 1))
                                      (:avoid-player . ,(p2dg:make-color-4 1 0 1 1))
+                                     (:food-chasing . ,(p2dg:make-color-4 1 1 0 1))
                                      (:sight-range . ,(p2dg:make-color-4 0 0 0 1))))
 
 (defun clear-debug-markers ()
