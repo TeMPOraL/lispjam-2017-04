@@ -189,6 +189,12 @@
                      :initform 0.0
                      :accessor sheep-grazing-cooldown)))
 
+(defmethod apply-behaviours ((sheep sheep) (world world))
+  (declare (ignore world))
+  (if (> (sheep-grazing-cooldown sheep) 0)
+      (p2dm:make-vector-2d)
+      (call-next-method sheep world)))
+
 (defmethod draw-entity ((sheep sheep))
   (with-slots (position velocity hunger blackp)
       sheep
