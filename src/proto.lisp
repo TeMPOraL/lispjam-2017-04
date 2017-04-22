@@ -223,6 +223,23 @@
     (values (float (1+ (- (expt 2 (* (- factor) (- 1 x))))))
             (float x))))
 
+(defun find-smallest (list &key (test #'<) (key #'identity))
+  "Find minimal element in a `LIST'.
+
+`TEST' is a function of two arguments that provides the definition of 'smaller'.
+`KEY' is a function that converts list elements into value that will be compared by `TEST'.
+
+Returns the smallest compared value (as given by `KEY' function) as a second return value."
+  (let ((smallest-value (car list))
+        (smallest-compare (when list
+                            (funcall key (car list)))))
+    (dolist (current (cdr list))
+      (let ((current-compare (funcall key current)))
+        (when (funcall test current-compare smallest-compare)
+          (setf smallest-value current
+                smallest-compare current-compare))))
+    (values smallest-value smallest-compare)))
+
 (defun make-default-boid-behaviours ()
   (list (lambda (boid world)                 ; cohesion
           (com boid (friendlies world)))
@@ -314,15 +331,19 @@
                         lr)))
    (p2dm:make-vector-2d)))
 
-(defun chase-food (boid food)           ;FIXME works only on sheep; ensure no other boids happen to use it.
+(defun chase-food (boid food)    ;FIXME works only on sheep; ensure no other boids happen to use it.
   "Behaviour to chase `FOOD'."
-  (let ((food-cnt (length food)))
+  (let* ((food-cnt (length food))
+         (boid-position (entity-position boid))
+         (closest-food (find-smallest food
+                                      :test (lambda (p1 p2)
+                                              (< (p2dm:distance-between-vectors-squared p1 boid-position)
+                                                 (p2dm:distance-between-vectors-squared p2 boid-position)))
+                                      :key #'entity-position)))
     (or
      (when (> food-cnt 0)
        (static-priority (ddv (entity-position boid)
-                             (p2dm:subtract-vectors (p2dm:scaled-vector (reduce #'p2dm:add-vectors food :key #'entity-position)
-                                                                        (/ 1.0 food-cnt))
-                                                    (entity-position boid))
+                             (p2dm:subtract-vectors (entity-position closest-food) (entity-position boid))
                              :food-chasing)
                         (sheep-hunger boid)))
      (p2dm:make-vector-2d))))
