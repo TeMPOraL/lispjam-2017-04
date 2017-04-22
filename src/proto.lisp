@@ -23,6 +23,7 @@
 
 (defparameter +sheep-size+ 2.0)
 (defparameter +sheep-grazing-cooldown-time+ 2.0)
+(defparameter +sheep-eating-speed+ 1.0)
 
 (defparameter +food-color+ (p2dg:make-color-4 0 0.4 0 1))
 (defparameter +food-size+ 2.0)
@@ -80,6 +81,10 @@
           :initform (p2dg:make-color-4 0.5 0.5 0.2 1)
           :accessor entity-color)))
 
+(defmethod update-entity ((entity entity) (world  world) dt)
+  ;; TODO if needed.
+  (values))
+
 (defmethod draw-entity ((entity entity))
   (with-slots (position color)
       entity
@@ -99,6 +104,10 @@
            :accessor food-eaten-p))
   (:default-initargs
    :color +food-color+))
+
+(defmethod update-entity ((food food) (world world) dt)
+  (declare (ignore food world dt))
+  (values))
 
 (defmethod draw-entity ((food food))
   (with-slots (position color food-size)
@@ -120,6 +129,35 @@
    (angular-speed :initarg :speed
                   :initform p2dm:+pi+
                   :accessor player-angular-speed)))
+
+(defmethod update-entity ((player player) (world world) dt)
+  (declare (ignore world))
+  (with-slots (position velocity orientation color speed angular-speed)
+      player
+
+    ;; input
+    (setf speed (cond ((key-pressed-p :scancode-up)
+                       +player-running-speed+)
+                      ((key-pressed-p :scancode-down)
+                       +player-slow-speed+)
+                      (t
+                       +player-base-speed+))
+          angular-speed (cond ((key-pressed-p :scancode-left)
+                               (+ +player-angular-speed+))
+                              ((key-pressed-p :scancode-right)
+                               (- +player-angular-speed+))
+                              (t
+                               0.0)))
+
+    ;; physics
+    (incf orientation (* angular-speed dt))
+    (setf velocity (p2dm:scaled-vector (p2dm:rotated-vector-2d (p2dm:make-vector-2d 1.0 0.0) orientation)
+                                       speed))
+    (p2dm:add-to-vector position (p2dm:scaled-vector velocity dt))
+
+    ;; clamp position to game boundaries
+    (p2dm:clampf (p2dm:vec-x position) 0.0 (float p2d:*canvas-width*))
+    (p2dm:clampf (p2dm:vec-y position) 0.0 (float p2d:*canvas-height*))))
 
 (defmethod draw-entity ((player player))
   (with-slots (position orientation color)
@@ -170,6 +208,21 @@
        do (p2dm:add-to-vector sum (funcall b boid seen-world)))
     sum))
 
+(defun steering (velocity desired)
+  (let ((steering (p2dm:subtract-vectors (p2dm:scaled-vector desired +max-boid-steering+) velocity)))
+    (p2dm:clamped-vector steering +max-boid-steering+)))
+
+(defmethod update-entity ((boid boid) (world world) dt)
+  (with-slots (position velocity)
+      boid
+    (flet ((apply-force (force)
+             (p2dm:add-to-vector velocity (p2dm:scaled-vector force dt))
+             (p2dm:clamp-vector velocity +max-boid-speed+)))
+      (p2dm:add-to-vector position (p2dm:scaled-vector velocity dt))
+      (let ((desired (apply-behaviours boid world)))
+        (ddv position (p2dm:scaled-vector desired 10.0) :desired)
+        (apply-force (steering velocity desired))))))
+
 (defmethod draw-entity ((boid boid))
   (with-slots (position velocity color)
       boid
@@ -194,6 +247,13 @@
   (if (> (sheep-grazing-cooldown sheep) 0)
       (p2dm:make-vector-2d)
       (call-next-method sheep world)))
+
+(defmethod update-entity ((sheep sheep) (world world) dt)
+  (decf (sheep-grazing-cooldown sheep) dt)
+  (maxf (sheep-grazing-cooldown sheep) 0)
+  (call-next-method sheep world dt)
+  (when (> (sheep-grazing-cooldown sheep) 0)
+    (setf (p2dm:vector-value (entity-velocity sheep)) +sheep-eating-speed+)))
 
 (defmethod draw-entity ((sheep sheep))
   (with-slots (position velocity hunger blackp)
@@ -369,7 +429,7 @@ Returns the smallest compared value (as given by `KEY' function) as a second ret
 
 (defun update-world (dt)
   (update-all-boids *world* dt)
-  (update-player (player *world*) dt)
+  (update-entity (player *world*) *world* dt)
 
   (handle-collisions *world*)
   (remove-eaten-food *world*))
@@ -386,39 +446,11 @@ Returns the smallest compared value (as given by `KEY' function) as a second ret
 (defun update-all-boids (world dt)
   (let ((boids (boids world)))
     (loop for boid in boids
-       do (update-boid boid dt))))
+       do (update-entity boid world dt))))
 
 (defun draw-all-boids ()
   (loop for boid in (boids *world*)
      do (draw-entity boid)))
-
-(defun update-player (player dt)
-  (with-slots (position velocity orientation color speed angular-speed)
-      player
-
-    ;; input
-    (setf speed (cond ((key-pressed-p :scancode-up)
-                       +player-running-speed+)
-                      ((key-pressed-p :scancode-down)
-                       +player-slow-speed+)
-                      (t
-                       +player-base-speed+))
-          angular-speed (cond ((key-pressed-p :scancode-left)
-                               (+ +player-angular-speed+))
-                              ((key-pressed-p :scancode-right)
-                               (- +player-angular-speed+))
-                              (t
-                               0.0)))
-
-    ;; physics
-    (incf orientation (* angular-speed dt))
-    (setf velocity (p2dm:scaled-vector (p2dm:rotated-vector-2d (p2dm:make-vector-2d 1.0 0.0) orientation)
-                                       speed))
-    (p2dm:add-to-vector position (p2dm:scaled-vector velocity dt))
-
-    ;; clamp position to game boundaries
-    (p2dm:clampf (p2dm:vec-x position) 0.0 (float p2d:*canvas-width*))
-    (p2dm:clampf (p2dm:vec-y position) 0.0 (float p2d:*canvas-height*))))
 
 (defun spheres-collide-p (pos1 pos2 r1 r2)
   (< (p2dm:distance-between-vectors-squared pos1 pos2)
@@ -449,21 +481,6 @@ Returns the smallest compared value (as given by `KEY' function) as a second ret
   (push (make-instance 'food
                        :position (p2dm:make-vector-2d x y))
         (food *world*)))
-
-(defun steering (velocity desired)
-  (let ((steering (p2dm:subtract-vectors (p2dm:scaled-vector desired +max-boid-steering+) velocity)))
-    (p2dm:clamped-vector steering +max-boid-steering+)))
-
-(defun update-boid (boid dt)
-  (with-slots (position velocity)
-      boid
-    (flet ((apply-force (force)
-             (p2dm:add-to-vector velocity (p2dm:scaled-vector force dt))
-             (p2dm:clamp-vector velocity +max-boid-speed+)))
-      (p2dm:add-to-vector position (p2dm:scaled-vector velocity dt))
-      (let ((desired (apply-behaviours boid *world*)))
-        (ddv position (p2dm:scaled-vector desired 10.0) :desired)
-        (apply-force (steering velocity desired))))))
 
 
 
