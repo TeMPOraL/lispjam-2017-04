@@ -181,7 +181,15 @@
                :accessor boid-behaviours)
    (perception-range :initarg :perception-range
                      :initform +boid-perception-range+
-                     :accessor boid-perception-range)))
+                     :accessor boid-perception-range)
+
+   ;; supports wandering around behaviour
+   (decision :initarg :decision
+             :initform (p2dm:make-vector-2d)
+             :accessor decision)
+   (decision-cooldown :initarg :decision-cooldown
+                      :initform (p2dm:random-float 2.0 5.0)      ;FIXME magic
+                      :accessor decision-cooldown)))
 
 (defmethod perceive ((boid boid) (world world))
   (with-slots (position perception-range)
@@ -213,7 +221,7 @@
     (p2dm:clamped-vector steering +max-boid-steering+)))
 
 (defmethod update-entity ((boid boid) (world world) dt)
-  (with-slots (position velocity)
+  (with-slots (position velocity decision-cooldown)
       boid
     (flet ((apply-force (force)
              (p2dm:add-to-vector velocity (p2dm:scaled-vector force dt))
@@ -221,7 +229,10 @@
       (p2dm:add-to-vector position (p2dm:scaled-vector velocity dt))
       (let ((desired (apply-behaviours boid world)))
         (ddv position (p2dm:scaled-vector desired 10.0) :desired)
-        (apply-force (steering velocity desired))))))
+        (apply-force (steering velocity desired))))
+
+    (decf decision-cooldown dt)
+    (maxf decision-cooldown 0.0)))
 
 (defmethod draw-entity ((boid boid))
   (with-slots (position velocity color)
@@ -261,13 +272,8 @@
     (draw-sheep position (- (p2dm:vector-angle-2d velocity) (/ pi 2)) (p2dg:lerp-color hunger +sheep-full-color+ +sheep-hungry-color+))))
 
 
-;;; Behavioral code
+;;; Behaviour utilities.
 
-;;; Behaviour protocol:
-;;; IN: current boid, perceived world
-;;; OUT: desired *movement direction* (sorta like velocity)
-;;;
-;;; Let the behaviours reprioritize themselves dynamically.
 (defparameter +behaviour-priority-min+ 0.0)
 (defparameter +behaviour-priority-max+ 1.0)
 
@@ -300,6 +306,22 @@ Returns the smallest compared value (as given by `KEY' function) as a second ret
                 smallest-compare current-compare))))
     (values smallest-value smallest-compare)))
 
+(defun random-point-ahead (position direction distance-delta radius)
+  "Pick a random point that's placed on a circle of `RADIUS' that's `DISTANCE-DELTA' units in a `DIRECTION' from `POSITION'."
+  (let ((start-point (p2dm:add-vectors position (p2dm:scaled-vector direction distance-delta))))
+    (p2dm:add-vectors start-point
+                      (p2dm:vector-of-length (p2dm:rotated-vector-2d (p2dm:make-vector-2d 1.0 0.0) (p2dm:random-float 0.0 p2dm:+2pi+))
+                                             radius))))
+
+
+;;; Behavioral code
+
+;;; Behaviour protocol:
+;;; IN: current boid, perceived world
+;;; OUT: desired *movement direction* (sorta like velocity)
+;;;
+;;; Let the behaviours reprioritize themselves dynamically.
+
 (defun make-default-boid-behaviours ()
   (list (lambda (boid world)                 ; cohesion
           (com boid (friendlies world)))
@@ -313,6 +335,8 @@ Returns the smallest compared value (as given by `KEY' function) as a second ret
           (avoid-player boid (player world))) ; player avoidance
         (lambda (boid world)
           (chase-food boid (food world))) ; food chasing
+        (lambda (boid world)
+          (wander-around boid (friendlies world))) ; wandering around
         ))
 
 (defun com (boid all-boids)
@@ -408,13 +432,24 @@ Returns the smallest compared value (as given by `KEY' function) as a second ret
                         (sheep-hunger boid)))
      (p2dm:make-vector-2d))))
 
-;; (defun wander-around (boid other-boids)
-;;   "Behaviour of random wandering for `BOID' when lonely."
-;;   (or
-;;    (when (= 0 (length other-boids))
-;;      (let )
-;;      )
-;;    (p2dm:make-vector-2d)))
+(defun wander-around (boid other-boids)
+  "Behaviour of random wandering for `BOID' when lonely."
+  (or
+   (when (= 0 (length other-boids))
+     (with-slots (decision decision-cooldown)
+         boid
+       (if (> decision-cooldown 0)
+           decision
+           (progn
+             (setf decision-cooldown (p2dm:random-float 2.0 5.0)) ;; FIXME magic
+             (setf decision (static-priority (ddv (entity-position boid)
+                                                  (p2dm:subtract-vectors (random-point-ahead (entity-position boid)
+                                                                                             (p2dm:normalized-vector (entity-velocity boid))
+                                                                                             100.0 50.0)
+                                                                         (entity-position boid))
+                                                  :wandering)
+                                             0.3))))))
+   (p2dm:make-vector-2d)))
 
 
 (defun key-pressed-p (scancode)
