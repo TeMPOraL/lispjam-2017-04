@@ -28,6 +28,11 @@
 (defparameter +food-color+ (p2dg:make-color-4 0 0.4 0 1))
 (defparameter +food-size+ 2.0)
 
+(defparameter +grazing-field-color+ (p2dg:make-color-4 0 0.9 0 0.5))
+(defparameter +grazing-field-spawn-cooldown-min+ 5.0)
+(defparameter +grazing-field-spawn-cooldown-max+ 14.0)
+(defparameter +max-simultaneous-food+ 20)
+
 
 ;;; World
 
@@ -40,6 +45,10 @@
          :initarg :food
          :accessor food)
 
+   (grazing-fields :initform '()
+                   :initarg :grazing-fields
+                   :accessor grazing-fields)
+
    (houses :initform '()
            :initarg :houses
            :accessor houses)
@@ -47,6 +56,14 @@
    (obstacles :initform '()
               :initarg :obstacles
               :accessor obstacles)
+
+   (saved-sheep :initform '()
+                :initarg :saved-sheep
+                :accessor saved-sheep)
+
+   (sheep-house :initform nil           ;TODO
+                :initarg :sheep-house
+                :accessor sheep-house)
 
    (player :initform (error "Player needs to be specified explicitly.")
            :initarg :player
@@ -117,6 +134,50 @@
       (p2dglu:scale2-uniform food-size)
       (p2dglu:color4 color)
       (p2dglu:draw-square))))
+
+
+;;; Grazing field
+(defclass grazing-field (entity)
+  ((width :initform 100
+          :initarg :width
+          :accessor grazing-field-width)
+   (height :initform 100
+           :initarg :height
+           :accessor grazing-field-height)
+   (food-spawn-cooldown :initform 0.0
+                        :initarg :food-spawn-cooldown
+                        :accessor grazing-field-food-spawn-cooldown))
+  (:default-initargs
+   :color +grazing-field-color+))
+
+(defmethod update-entity ((field grazing-field) (world world) dt)
+  (with-slots (position width height food-spawn-cooldown)
+      field
+    (decf food-spawn-cooldown dt)
+    (maxf food-spawn-cooldown 0)
+
+    (when (and (<= food-spawn-cooldown 0)
+               (< (length (food world)) +max-simultaneous-food+))
+      (setf food-spawn-cooldown (p2dm:random-float +grazing-field-spawn-cooldown-min+ +grazing-field-spawn-cooldown-max+))
+      (add-food (p2dm:random-float (- (p2dm:vec-x position) (/ width 2)) ; FIXME add-food should be replaced with something using the world parameter
+                                   (+ (p2dm:vec-x position) (/ width 2)))
+                (p2dm:random-float (- (p2dm:vec-y position) (/ height 2))
+                                   (+ (p2dm:vec-y position) (/ height 2)))))))
+
+(defmethod draw-entity ((field grazing-field))
+  (with-slots (position color width height)
+      field
+    (gl:with-pushed-matrix
+      (p2dglu:translate2 position)
+      (gl:scale (/ width 2) (/ height 2) 1)
+      (p2dglu:color4 color)
+      (p2dglu:draw-square))))
+
+(defun make-default-grazing-fields ()
+  (list (make-instance 'grazing-field
+                       :position (p2dm:make-vector-2d 400.0 300.0))
+        (make-instance 'grazing-field
+                       :position (p2dm:make-vector-2d 500.0 200.0))))
 
 
 (defclass player (entity)
@@ -202,6 +263,7 @@
                                                   (and (can-see-point (entity-position other))
                                                        (not (eq other boid))))
                                                 (boids world))
+                     :dangers '()
                      :food (remove-if-not #'can-see-point
                                           (food world)
                                           :key #'entity-position)
@@ -253,6 +315,19 @@
                      :initform 0.0
                      :accessor sheep-grazing-cooldown)))
 
+(defun sheep-full-p (sheep)
+  (<= (sheep-hunger sheep)
+      0.0))
+
+(defmethod perceive ((sheep sheep) (world world))
+  (if (member sheep (saved-sheep world))
+      (make-instance 'perceived-world
+                     :friendlies '()
+                     :dangers '()
+                     :food '()
+                     :player nil)
+      (call-next-method)))
+
 (defmethod apply-behaviours ((sheep sheep) (world world))
   (declare (ignore world))
   (if (> (sheep-grazing-cooldown sheep) 0)
@@ -270,6 +345,13 @@
   (with-slots (position velocity hunger blackp)
       sheep
     (draw-sheep position (- (p2dm:vector-angle-2d velocity) (/ pi 2)) (p2dg:lerp-color hunger +sheep-full-color+ +sheep-hungry-color+))))
+
+(defun transfer-sheep-to-house (sheep world)
+  (push sheep (sheep-house world))
+  (setf (boids world)
+        (delete sheep (boids world)))
+  (setf (boid-behaviours sheep)
+        (make-default-saved-sheep-behaviours)))
 
 
 ;;; Behaviour utilities.
@@ -338,6 +420,13 @@ Returns the smallest compared value (as given by `KEY' function) as a second ret
         (lambda (boid world)
           (wander-around boid (friendlies world))) ; wandering around
         ))
+
+(defun make-default-saved-sheep-behaviours ()
+  ;; TODO
+  ;; - avoidance
+  ;; - stay within walls
+  ;; - wander around
+  (list))
 
 (defun com (boid all-boids)
   "Center of mass of `BOIDS'."
@@ -466,10 +555,16 @@ Returns the smallest compared value (as given by `KEY' function) as a second ret
   (update-all-boids *world* dt)
   (update-entity (player *world*) *world* dt)
 
+  (loop for gf in (grazing-fields *world*)
+     do (update-entity gf *world* dt))
+
   (handle-collisions *world*)
   (remove-eaten-food *world*))
 
 (defun draw-world ()
+  (loop for gf in (grazing-fields *world*)
+     do (draw-entity gf))
+
   (draw-all-boids)
   (draw-food)
   (draw-entity (player *world*)))
@@ -479,8 +574,11 @@ Returns the smallest compared value (as given by `KEY' function) as a second ret
      do (draw-entity food)))
 
 (defun update-all-boids (world dt)
-  (let ((boids (boids world)))
+  (let ((boids (boids world))
+        (saved (saved-sheep world)))
     (loop for boid in boids
+       do (update-entity boid world dt))
+    (loop for boid in saved
        do (update-entity boid world dt))))
 
 (defun draw-all-boids ()

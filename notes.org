@@ -19,15 +19,17 @@ To implement, in order of MVP-importance:
 
 - [X] player movement
 - [X] limit player to game area
-- [ ] sheep house (full sheep stay there)
-- [ ] hunger, pastures
-- [ ] sheeps wandering when lonely
+- [X] grazing makes sheep stop
+- [X] full sheep don't graze
+- [X] hunger
+- [X] pastures - random food spawning
+- [X] sheeps wandering when lonely
 - [X] better gfx for sheep (instead of triangle)
+- [ ] sheep house
+- [ ] full sheep that enter stay there
 - [ ] wolves
-- [ ] grazing makes sheep stop
-- [ ] full sheep don't graze
+- [ ] ship house is off-limits to wolves
 - [ ] wolves kill sheep on contact
-- [ ] eating kills wolves
 - [ ] points display
 - [ ] time display
 - [ ] wolf packs (flocking behaviour)

@@ -30,7 +30,8 @@
 
   ;; game initialize
   (setf *world* (make-instance 'world
-                               :player (make-default-player))))
+                               :player (make-default-player)
+                               :grazing-fields (make-default-grazing-fields))))
 
 (defmethod p2d:deinitialize ((game ljgame))
   ;; TODO
