@@ -495,9 +495,11 @@ Returns the smallest compared value (as given by `KEY' function) as a second ret
   (dolist (sheep (boids world))
     (dolist (food (food world))
       (when (and (not (food-eaten-p food))
+                 (> (sheep-hunger sheep) 0.0)
                  (spheres-collide-p (entity-position sheep) (entity-position food) +sheep-size+ (food-size food)))
         (setf (sheep-grazing-cooldown sheep) +sheep-grazing-cooldown-time+
-              (food-eaten-p food) t)))))
+              (food-eaten-p food) t)
+        (decf (sheep-hunger sheep) 0.5))))) ;FIXME magic
 
 (defun remove-eaten-food (world)
   (setf (food world) (delete-if #'food-eaten-p (food world))))
