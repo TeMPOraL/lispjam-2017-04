@@ -1,7 +1,7 @@
 (in-package #:lispjam-2017-04-temporal)
 
+;; (defvar *main-font-size* 0) ; FIXME implement the fix (best in engine)
 (defvar *default-mono-font* nil)
-(defvar *smaller-mono-font* nil)
 
 (defclass ljgame (p2d:game)
   ())
@@ -28,8 +28,8 @@
   (gl:enable :texture-2d)
 
   ;; fonts
+  ;; (setf *main-font-size* (floor (p2d:canvas->window 16 0))) ; a hotfix for font size being specified in real pixels, not canvas pixels
   (setf *default-mono-font* (p2dg:get-rendered-font "assets/fonts/VeraMoBd.ttf" :size 16))
-  (setf *smaller-mono-font* (p2dg:get-rendered-font "assets/fonts/VeraMono.ttf" :size 12))
 
   (intro/enter))
 

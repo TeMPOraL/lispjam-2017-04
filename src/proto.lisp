@@ -62,6 +62,7 @@
 
 ;;; Scores
 
+(defvar *total-sheep* 0)
 (defvar *sheeps-saved* 0)
 (defvar *sheeps-dead* 0)
 
@@ -779,10 +780,10 @@ Returns the smallest compared value (as given by `KEY' function) as a second ret
   (remove-eaten-food *world*)
 
   ;; victory / defeat conditions
-  (when (no-sheep-remaining-p *world*)
-    (if (>= *sheeps-saved* *sheeps-dead*)
-        (victory)
-        (defeat))))
+  (when (game-end-p *world*)
+    (if (defeatp *world*)
+        (defeat)
+        (victory))))
 
 (defun draw-world ()
   (loop for h in (houses *world*)
@@ -941,6 +942,7 @@ Returns the smallest compared value (as given by `KEY' function) as a second ret
                        (* +level-sheep-number-difficulty-increment+ difficulty)))
          (x-increment (/ +spawn-sheep-area-width+ num-sheep))
          (result '()))
+    (setf *total-sheep* num-sheep)
     (dotimes (n num-sheep result)
       (push (make-instance 'sheep
                            :position (random-point-in-rect (+ +spawn-sheep-area-x-start+ (* n x-increment))
@@ -1004,8 +1006,18 @@ the worse player is off.."
 
 
 ;;; Victory / defeat
-(defun no-sheep-remaining-p (world)
-  (= 0 (length (boids world))))
+(defun no-point-in-playing-p (remaining)
+  (< (+ *sheeps-saved* remaining) *sheeps-dead*))
+
+(defun game-end-p (world)
+  (let ((sheep-remaining (length (boids world))))
+    (or (= 0 sheep-remaining)
+        (no-point-in-playing-p sheep-remaining))))
+
+(defun defeatp (world)
+  (let ((sheep-remaining (length (boids world))))
+    (or (> *sheeps-dead* *sheeps-saved*)
+        (no-point-in-playing-p sheep-remaining))))
 
 (defun victory ()
   ;; level set by screens code

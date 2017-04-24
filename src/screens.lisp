@@ -138,10 +138,10 @@
 
   (p2dg:with-color (0 0 0)
     ;; TODO optimize - only re-render when text changed
-    (p2dg::draw-text (format nil "Lost: ~D" *sheeps-dead*)
+    (p2dg::draw-text (format nil "Lost: ~D/~D" *sheeps-dead* (ceiling (/ *total-sheep* 2)))
                      :font *default-mono-font*
                      :size 16
-                     :x 580
+                     :x 570
                      :y 580
                      )
     (p2dg::draw-text (format nil "Saved: ~D" *sheeps-saved*)
