@@ -34,7 +34,9 @@ To implement, in order of MVP-importance:
 - [ ] ship house is off-limits to wolves
 - [X] points display (saved / dead)
 - [ ] +time display+ not really, no.
-- [ ] starting setup for entities (i.e. level(s))
+- [X] starting setup for entities (i.e. level(s))
+- [X] victory / defeat handling
+- [X] intro, victory, defeat screens (also get-ready screen)
 - [ ] obstacles
 
 Also

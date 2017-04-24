@@ -1,5 +1,8 @@
 (in-package #:lispjam-2017-04-temporal)
 
+
+;;; Config and state
+
 (defparameter +screen-switch-delay+ 1.5)
 (defvar *screen-switch-countdown* 0.0)
 
@@ -8,13 +11,9 @@
 (defvar *screen-update-handler* nil)
 (defvar *screen-render-handler* nil)
 
-;;; intro
-;;; get ready
-;;; main game
-;;; you win
-;;; you lose
-
 
+;;; Utility macros
+
 (defmacro on-key-down (scancode &body code) ;FIXME bad evil macro, captures `state' and `key-code'.
   `(when (and (eql key-code ,scancode)
               (sdl2:key-down-p state))
@@ -24,6 +23,7 @@
   `(setf ,what (not ,what)))
 
 
+;;; Intro screen
 
 (defun intro/enter ()
   (log:info "Entering Intro screen.")
@@ -56,12 +56,16 @@
                      :y 300)))
 
 
+;;; Get Ready screen
+
 (defun get-ready/enter ()
   (log:info "Entering Get Ready screen.")
   (setf *screen-switch-countdown* +screen-switch-delay+)
 
   (incf *current-level*)
-  (setf *world* (make-world *current-level*))
+  (setf *world* (make-world *current-level*)
+        *sheeps-saved* 0
+        *sheeps-dead* 0)
   
   (setf *screen-keyboard-handler* nil
         *screen-mouse-handler* nil
@@ -84,6 +88,7 @@
                      :y 300)))
 
 
+;;; Main Game screen
 
 (defun main-game/enter ()
   (log:info "Entering Main Game screen.")
@@ -153,6 +158,7 @@
   (clear-debug-markers))
 
 
+;;; Victory screen
 
 (defun victory/enter ()
   (log:info "Entering Victory screen.")
@@ -166,7 +172,7 @@
 (defun victory/update (dt)
   (decf *screen-switch-countdown* dt)
   (when (< *screen-switch-countdown* 0)
-    (main-game/enter)))
+    (get-ready/enter)))
 
 (defun victory/draw ()
   (p2dg:with-color (0 0 0 1)
@@ -177,6 +183,7 @@
                      :y 300)))
 
 
+;;; Defeat screen
 
 (defun defeat/enter ()
   (log:info "Entering Defeat screen.")

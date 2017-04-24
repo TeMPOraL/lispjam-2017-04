@@ -776,7 +776,13 @@ Returns the smallest compared value (as given by `KEY' function) as a second ret
      do (update-entity d *world* dt))
 
   (handle-collisions *world*)
-  (remove-eaten-food *world*))
+  (remove-eaten-food *world*)
+
+  ;; victory / defeat conditions
+  (when (no-sheep-remaining-p *world*)
+    (if (>= *sheeps-saved* *sheeps-dead*)
+        (victory)
+        (defeat))))
 
 (defun draw-world ()
   (loop for h in (houses *world*)
@@ -998,7 +1004,7 @@ the worse player is off.."
 
 
 ;;; Victory / defeat
-(defun no-sheep-remaining (world)
+(defun no-sheep-remaining-p (world)
   (= 0 (length (boids world))))
 
 (defun victory ()
