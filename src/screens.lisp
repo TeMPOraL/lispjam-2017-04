@@ -80,6 +80,7 @@
     (main-game/enter)))
 
 (defun get-ready/draw ()
+  ;; TODO draw a full-screen dark quad
   (p2dg:with-color (0 0 0 1)
     (p2dg::draw-text "Get ready..."
                      :font *default-mono-font*
@@ -167,7 +168,9 @@
   (setf *screen-keyboard-handler* nil
         *screen-mouse-handler* nil
         *screen-update-handler* #'victory/update
-        *screen-render-handler* #'victory/draw))
+        *screen-render-handler* (lambda ()
+                                  (main-game/draw)
+                                  (victory/draw))))
 
 (defun victory/update (dt)
   (decf *screen-switch-countdown* dt)
@@ -175,6 +178,7 @@
     (get-ready/enter)))
 
 (defun victory/draw ()
+  ;; TODO draw a full-screen dark quad
   (p2dg:with-color (0 0 0 1)
     (p2dg::draw-text "You win."
                      :font *default-mono-font*
@@ -192,7 +196,9 @@
   (setf *screen-keyboard-handler* nil
         *screen-mouse-handler* nil
         *screen-update-handler* #'defeat/update
-        *screen-render-handler* #'defeat/draw))
+        *screen-render-handler* (lambda ()
+                                  (main-game/draw)
+                                  (defeat/draw))))
 
 (defun defeat/update (dt)
   (decf *screen-switch-countdown* dt)
@@ -200,6 +206,7 @@
     (intro/enter)))
 
 (defun defeat/draw ()
+  ;; TODO draw a full-screen dark quad
   (p2dg:with-color (0 0 0 1)
     (p2dg::draw-text "You lose."
                      :font *default-mono-font*
