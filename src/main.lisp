@@ -68,22 +68,21 @@
   (multiple-value-bind (rx ry)
       (p2d:window->canvas x y)
 
-    ;; NOTE, those are all debugging handlers
-    (when (and (= button 1)             ;FIXME DRY, c.f. sdl2:mouse-state-p
-               (= state 1)              ;FIXME DRY, c.f. sdl2:mouse-state
-               )
-      (click-handler rx ry))
+    (when (sdl2:keyboard-state-p :scancode-f7)
 
-    (when (and (= button 2)
-               (= state 1))
-      (mid-click-handler rx ry))
+      ;; NOTE, those are all debugging handlers
+      (when (and (= button 1)             ;FIXME DRY, c.f. sdl2:mouse-state-p
+                 (= state 1)              ;FIXME DRY, c.f. sdl2:mouse-state
+                 )
+        (click-handler rx ry))
 
-    (when (and (= button 3)
-               (= state 1))
-      (right-click-handler rx ry))
+      (when (and (= button 2)
+                 (= state 1))
+        (mid-click-handler rx ry))
 
-    ;; TODO button 3 will be for wolves :).
-    ))
+      (when (and (= button 3)
+                 (= state 1))
+        (right-click-handler rx ry)))))
 
 (defmethod p2d:on-tick ((game ljgame) dt)
   (update-world dt))
@@ -96,6 +95,7 @@
   (draw-world)
 
   (p2dg:with-color (0 0 0)
+    ;; TODO optimize - only re-render when text changed
     (p2dg::draw-text (format nil "Lost: ~D" *sheeps-dead*)
                      :font *default-mono-font*
                      :size 16
