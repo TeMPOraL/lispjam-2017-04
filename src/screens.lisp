@@ -12,7 +12,7 @@
 (defvar *screen-render-handler* nil)
 
 
-;;; Utility macros
+;;; Utilities
 
 (defmacro on-key-down (scancode &body code) ;FIXME bad evil macro, captures `state' and `key-code'.
   `(when (and (eql key-code ,scancode)
@@ -21,6 +21,15 @@
 
 (defmacro toggle (what)
   `(setf ,what (not ,what)))
+
+(defun full-screen-picture (texture)
+  (let ((w (float (/ p2d:*canvas-width* 2)))
+        (h (float (/ p2d:*canvas-height* 2))))
+    (p2dg:with-color (1 1 1)
+      (gl:with-pushed-matrix
+        (gl:translate w h 0)            ;MAGIC
+        (gl:scale w (- h) 1)
+        (p2dglu:draw-square :texture texture)))))
 
 
 ;;; Intro screen
@@ -48,12 +57,7 @@
   (declare (ignore dt)))
 
 (defun intro/draw ()
-  (p2dg:with-color (0 0 0 1)
-    (p2dg::draw-text "TODO intro"
-                     :font *default-mono-font*
-                     :size 16
-                     :x 400
-                     :y 300)))
+  (full-screen-picture *intro-background*))
 
 
 ;;; Get Ready screen
@@ -70,9 +74,7 @@
   (setf *screen-keyboard-handler* nil
         *screen-mouse-handler* nil
         *screen-update-handler* #'get-ready/update
-        *screen-render-handler* (lambda ()
-                                  (main-game/draw)
-                                  (get-ready/draw))))
+        *screen-render-handler* #'get-ready/draw))
 
 (defun get-ready/update (dt)
   (decf *screen-switch-countdown* dt)
@@ -80,13 +82,7 @@
     (main-game/enter)))
 
 (defun get-ready/draw ()
-  ;; TODO draw a full-screen dark quad
-  (p2dg:with-color (0 0 0 1)
-    (p2dg::draw-text "Get ready..."
-                     :font *default-mono-font*
-                     :size 16
-                     :x 400
-                     :y 300)))
+  (full-screen-picture *get-ready-background*))
 
 
 ;;; Main Game screen
@@ -134,14 +130,7 @@
   (update-world dt))
 
 (defun main-game/draw ()
-  (let ((w (float (/ p2d:*canvas-width* 2)))
-        (h (float (/ p2d:*canvas-height* 2))))
-   (p2dg:with-color (1 1 1)
-     (gl:with-pushed-matrix
-       (gl:translate w h 0)         ;MAGIC
-       (gl:scale w (- h) 1)
-       (p2dglu:draw-square :texture *game-background*))))
-
+  (full-screen-picture *game-background*)
   (draw-world)
 
   (p2dg:with-color (1 1 1)
@@ -176,9 +165,7 @@
   (setf *screen-keyboard-handler* nil
         *screen-mouse-handler* nil
         *screen-update-handler* #'victory/update
-        *screen-render-handler* (lambda ()
-                                  (main-game/draw)
-                                  (victory/draw))))
+        *screen-render-handler* #'victory/draw))
 
 (defun victory/update (dt)
   (decf *screen-switch-countdown* dt)
@@ -186,13 +173,7 @@
     (get-ready/enter)))
 
 (defun victory/draw ()
-  ;; TODO draw a full-screen dark quad
-  (p2dg:with-color (0 0 0 1)
-    (p2dg::draw-text "You win."
-                     :font *default-mono-font*
-                     :size 16
-                     :x 400
-                     :y 300)))
+  (full-screen-picture *victory-background*))
 
 
 ;;; Defeat screen
@@ -204,9 +185,7 @@
   (setf *screen-keyboard-handler* nil
         *screen-mouse-handler* nil
         *screen-update-handler* #'defeat/update
-        *screen-render-handler* (lambda ()
-                                  (main-game/draw)
-                                  (defeat/draw))))
+        *screen-render-handler* #'defeat/draw))
 
 (defun defeat/update (dt)
   (decf *screen-switch-countdown* dt)
@@ -214,10 +193,4 @@
     (intro/enter)))
 
 (defun defeat/draw ()
-  ;; TODO draw a full-screen dark quad
-  (p2dg:with-color (0 0 0 1)
-    (p2dg::draw-text "You lose."
-                     :font *default-mono-font*
-                     :size 16
-                     :x 400
-                     :y 300)))
+  (full-screen-picture *defeat-background*))

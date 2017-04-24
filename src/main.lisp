@@ -7,7 +7,9 @@
 
 (defvar *intro-background* nil)
 (defvar *game-background* nil)
-(defvar *transitional-screen-frame* nil)
+(defvar *get-ready-background* nil)
+(defvar *victory-background* nil)
+(defvar *defeat-background* nil)
 
 (defparameter *window->canvas-ar-w* 0 "window/canvas horizontal aspect ratio")
 (defparameter *window->canvas-ar-h* 0 "window/canvas vertical aspect ratio")
@@ -24,7 +26,11 @@
   (setf *default-mono-font* (p2dg:get-rendered-font "assets/fonts/VeraMoBd.ttf" :size 16))
 
   ;; textures
-  (setf *game-background* (p2dg:get-texture "assets/game-background.png")))
+  (setf *intro-background* (p2dg:get-texture "assets/intro-screen.png")
+        *game-background* (p2dg:get-texture "assets/game-background.png")
+        *get-ready-background* (p2dg:get-texture "assets/get-ready-screen.png")
+        *victory-background* (p2dg:get-texture "assets/victory-screen.png")
+        *defeat-background* (p2dg:get-texture "assets/defeat-screen.png")))
 
 
 (defmethod p2d:preinit ((game ljgame))
