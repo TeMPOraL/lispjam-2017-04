@@ -29,5 +29,6 @@
                (:file "debug")
 
                (:file "proto")
+               (:file "screens")
 
                (:file "main")))

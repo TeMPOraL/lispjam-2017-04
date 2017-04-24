@@ -65,6 +65,8 @@
 (defvar *sheeps-saved* 0)
 (defvar *sheeps-dead* 0)
 
+(defvar *current-level* 0)
+
 
 ;;; World
 
@@ -993,3 +995,16 @@ the worse player is off.."
                  :player (make-default-player)
                  :grazing-fields (make-default-grazing-fields)
                  :houses (make-default-sheep-houses)))
+
+
+;;; Victory / defeat
+(defun no-sheep-remaining (world)
+  (= 0 (length (boids world))))
+
+(defun victory ()
+  ;; level set by screens code
+  (victory/enter))
+
+(defun defeat ()
+  ;; level set by screens code
+  (defeat/enter))

@@ -31,8 +31,7 @@
   (setf *default-mono-font* (p2dg:get-rendered-font "assets/fonts/VeraMoBd.ttf" :size 16))
   (setf *smaller-mono-font* (p2dg:get-rendered-font "assets/fonts/VeraMono.ttf" :size 12))
 
-  ;; game initialize
-  (setf *world* (make-world 1)))
+  (intro/enter))
 
 (defmethod p2d:deinitialize ((game ljgame))
   ;; TODO
@@ -40,69 +39,25 @@
   )
 
 (defmethod p2d:on-key-event ((game ljgame) key state repeat)
-  (macrolet ((on-key-down (scancode &body code)
-               `(when (and (eql key-code ,scancode)
-                           (sdl2:key-down-p state))
-                  ,@code))
-             (toggle (what)
-               `(setf ,what (not ,what))))
-    (let ((key-code (sdl2:scancode-symbol (sdl2:scancode-value key))))
-      (log:trace key state key-code repeat)
-
-      ;; direct keydown events go here
-      (on-key-down :scancode-escape
-                   (sdl2:push-event :quit))
-      (on-key-down :scancode-f5
-                   (toggle *debug-draw-vectors*))
-      (on-key-down :scancode-f6
-                   (toggle *debug-draw-perception*)))))
+  (when *screen-keyboard-handler*
+    (funcall *screen-keyboard-handler* key state repeat)))
 
 (defmethod p2d:on-mouse-button-event ((game ljgame) x y button state)
-  (multiple-value-bind (rx ry)
-      (p2d:window->canvas x y)
-
-    (when (sdl2:keyboard-state-p :scancode-f7)
-
-      ;; NOTE, those are all debugging handlers
-      (when (and (= button 1)             ;FIXME DRY, c.f. sdl2:mouse-state-p
-                 (= state 1)              ;FIXME DRY, c.f. sdl2:mouse-state
-                 )
-        (click-handler rx ry))
-
-      (when (and (= button 2)
-                 (= state 1))
-        (mid-click-handler rx ry))
-
-      (when (and (= button 3)
-                 (= state 1))
-        (right-click-handler rx ry)))))
+  (when *screen-mouse-handler*
+    (funcall *screen-mouse-handler* x y button state)))
 
 (defmethod p2d:on-tick ((game ljgame) dt)
-  (update-world dt))
+  (when *screen-update-handler*
+    (funcall *screen-update-handler* dt)))
 
 (defmethod p2d:on-idle ((game ljgame) dt)
-  ;; TODO
+  ;; Nothing to do.
   )
 
 (defmethod p2d:on-render ((game ljgame) dt)
-  (draw-world)
-
-  (p2dg:with-color (0 0 0)
-    ;; TODO optimize - only re-render when text changed
-    (p2dg::draw-text (format nil "Lost: ~D" *sheeps-dead*)
-                     :font *default-mono-font*
-                     :size 16
-                     :x 580
-                     :y 580
-                     )
-    (p2dg::draw-text (format nil "Saved: ~D" *sheeps-saved*)
-                     :font *default-mono-font*
-                     :size 16
-                     :x 680
-                     :y 580))
-
-  (draw-debug-markers)
-  (clear-debug-markers))
+  (declare (ignore dt))
+  (when *screen-render-handler*
+    (funcall *screen-render-handler*)))
 
 
 
