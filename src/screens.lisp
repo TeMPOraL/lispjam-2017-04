@@ -134,9 +134,17 @@
   (update-world dt))
 
 (defun main-game/draw ()
+  (let ((w (float (/ p2d:*canvas-width* 2)))
+        (h (float (/ p2d:*canvas-height* 2))))
+   (p2dg:with-color (1 1 1)
+     (gl:with-pushed-matrix
+       (gl:translate w h 0)         ;MAGIC
+       (gl:scale w (- h) 1)
+       (p2dglu:draw-square :texture *game-background*))))
+
   (draw-world)
 
-  (p2dg:with-color (0 0 0)
+  (p2dg:with-color (1 1 1)
     ;; TODO optimize - only re-render when text changed
     (p2dg::draw-text (format nil "Lost: ~D/~D" *sheeps-dead* (ceiling (/ *total-sheep* 2)))
                      :font *default-mono-font*

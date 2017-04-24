@@ -1,12 +1,31 @@
 (in-package #:lispjam-2017-04-temporal)
 
-;; (defvar *main-font-size* 0) ; FIXME implement the fix (best in engine)
+
+;;; Assets and related
+
 (defvar *default-mono-font* nil)
+
+(defvar *intro-background* nil)
+(defvar *game-background* nil)
+(defvar *transitional-screen-frame* nil)
+
+(defparameter *window->canvas-ar-w* 0 "window/canvas horizontal aspect ratio")
+(defparameter *window->canvas-ar-h* 0 "window/canvas vertical aspect ratio")
+
+
 
 (defclass ljgame (p2d:game)
   ())
 
 
+(defun load-assets ()
+  ;; fonts
+  ;; (setf *main-font-size* (floor (p2d:canvas->window 16 0))) ; a hotfix for font size being specified in real pixels, not canvas pixels
+  (setf *default-mono-font* (p2dg:get-rendered-font "assets/fonts/VeraMoBd.ttf" :size 16))
+
+  ;; textures
+  (setf *game-background* (p2dg:get-texture "assets/game-background.png")))
+
 
 (defmethod p2d:preinit ((game ljgame))
   (setf p2d:*window-title* "#:LISPJAM-2017-04-GAME1000"
@@ -18,6 +37,9 @@
 (defmethod p2d:initialize ((game ljgame))
   (log:info "Initializing game.")
 
+  (setf *window->canvas-ar-w* (float (/ p2d:*canvas-width* p2d:*window-width*))
+        *window->canvas-ar-h* (float (/ p2d:*canvas-height* p2d:*window-height*)))
+
   ;; Graphics defaults
   (gl:clear-color 0.6901961 0.84705883 0.28235295 1.0)
 
@@ -27,16 +49,14 @@
   (gl:enable :blend)
   (gl:enable :texture-2d)
 
-  ;; fonts
-  ;; (setf *main-font-size* (floor (p2d:canvas->window 16 0))) ; a hotfix for font size being specified in real pixels, not canvas pixels
-  (setf *default-mono-font* (p2dg:get-rendered-font "assets/fonts/VeraMoBd.ttf" :size 16))
+  (load-assets)
 
   (intro/enter))
 
 (defmethod p2d:deinitialize ((game ljgame))
-  ;; TODO
-  (log:info "Game deinitialized.")
-  )
+  (p2dg:clear-texture-cache)
+  (p2dg:clear-font-cache)
+  (log:info "Game deinitialized."))
 
 (defmethod p2d:on-key-event ((game ljgame) key state repeat)
   (when *screen-keyboard-handler*

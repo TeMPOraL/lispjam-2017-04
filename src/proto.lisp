@@ -14,7 +14,7 @@
 
 (defparameter +min-boid-distance-to-game-area-boundary+ 30)
 
-(defparameter +boid-perception-range+ 50)
+(defparameter +boid-perception-range+ 55)
 
 (defparameter +player-color+ (p2dg:make-color-4 0.5 0.25 0.0 1.0))
 (defparameter +player-base-speed+ 50)
@@ -29,17 +29,17 @@
 (defparameter +sheep-grazing-cooldown-time+ 2.0)
 (defparameter +sheep-eating-speed+ 1.0)
 
-(defparameter +food-color+ (p2dg:make-color-4 0 0.4 0 1))
-(defparameter +food-size+ 2.0)
+(defparameter +food-color+ (p2dg:make-color-4 0 0.9 0 1))
+(defparameter +food-size+ 3.0)
 
-(defparameter +grazing-field-color+ (p2dg:make-color-4 0 0.9 0 0.5))
-(defparameter +grazing-field-spawn-cooldown-min+ 5.0)
+(defparameter +grazing-field-color+ (p2dg:make-color-4 0 0.9 0 0.01))
+(defparameter +grazing-field-spawn-cooldown-min+ 4.0)
 (defparameter +grazing-field-spawn-cooldown-max+ 14.0)
-(defparameter +max-simultaneous-food+ 20)
+(defparameter +max-simultaneous-food+ 30)
 
-(defparameter +sheep-house-color+ (p2dg:make-color-4 0.7 0.5 0 1))
+(defparameter +sheep-house-color+ (p2dg:make-color-4 0.7 0.5 0 0.01))
 
-(defparameter +wolf-color+ (p2dg:make-color-4 0.0 0.0 0.0 1))
+(defparameter +wolf-color+ (p2dg:make-color-4 0.7 0.0 0.0 1))
 (defparameter +wolf-size+ 3.0)
 (defparameter +wolf-eating-cooldown+ 3.0)
 (defparameter +wolf-eating-speed+ 1.0)
@@ -58,6 +58,8 @@
 (defparameter +spawn-wolves-area-y-start+ 0)
 (defparameter +spawn-wolves-area-width+ 400)
 (defparameter +spawn-wolves-area-height+ 20)
+
+(defparameter +black+ (p2dg:make-color-4 0 0 0 1))
 
 
 ;;; Scores
@@ -902,6 +904,7 @@ Returns the smallest compared value (as given by `KEY' function) as a second ret
     (p2dglu:draw-circle)
     (gl:translate 0 1 0)
     (gl:scale 0.5 0.5 0.5)
+    (p2dglu:color4 +black+)
     (p2dglu:draw-circle)))
 
 (defun draw-player (position orientation color)
@@ -917,7 +920,7 @@ Returns the smallest compared value (as given by `KEY' function) as a second ret
     (p2dglu:translate2 position)
     (p2dglu:color4 color)
     (p2dglu:rotatez* orientation)
-    (gl:scale 4 6 4)
+    (gl:scale 5 7 5)
     (p2dglu:draw-triangle)))
 
 (defun draw-doodad (position orientation color)
@@ -970,23 +973,23 @@ Returns the smallest compared value (as given by `KEY' function) as a second ret
 
 (defun make-default-grazing-fields ()
   (list (make-instance 'grazing-field
-                       :position (p2dm:make-vector-2d 200.0 450.0)
+                       :position (p2dm:make-vector-2d 210.0 435.0)
                        :width 300
-                       :height 100)
+                       :height 120)
         (make-instance 'grazing-field
-                       :position (p2dm:make-vector-2d 600.0 300.0)
+                       :position (p2dm:make-vector-2d 590.0 320.0)
                        :width 300
-                       :height 100)
+                       :height 120)
         (make-instance 'grazing-field
-                       :position (p2dm:make-vector-2d 300.0 250.0)
-                       :width 150
-                       :height 150)))
+                       :position (p2dm:make-vector-2d 270.0 260.0)
+                       :width 120
+                       :height 80)))
 
 (defun make-default-sheep-houses ()
   (list (make-instance 'sheep-house
                        :position (p2dm:make-vector-2d 400.0 585.0)
-                       :width 200.0
-                       :height 30.0)))
+                       :width 160.0
+                       :height 80.0)))
 
 (defun make-default-player ()
   (make-instance 'player
