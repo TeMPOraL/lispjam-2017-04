@@ -9,6 +9,9 @@
 (defparameter +max-boid-speed+ 60.0)
 (defparameter +min-boid-separation+ 30)
 
+(defparameter +max-wolf-steering+ 80.0)
+(defparameter +max-wolf-speed+ 80.0)
+
 (defparameter +min-boid-distance-to-game-area-boundary+ 30)
 
 (defparameter +boid-perception-range+ 50)
@@ -314,20 +317,28 @@
        do (p2dm:add-to-vector sum (funcall b boid seen-world)))
     sum))
 
-(defun steering (velocity desired)
-  (let ((steering (p2dm:subtract-vectors (p2dm:scaled-vector desired +max-boid-steering+) velocity)))
-    (p2dm:clamped-vector steering +max-boid-steering+)))
+(defmethod max-speed ((boid boid))
+  (declare (ignore boid))
+  +max-boid-speed+)
+
+(defmethod max-steering ((boid boid))
+  (declare (ignore boid))
+  +max-boid-steering+)
+
+(defun steering (boid velocity desired)
+  (let ((steering (p2dm:subtract-vectors (p2dm:scaled-vector desired (max-steering boid)) velocity)))
+    (p2dm:clamped-vector steering (max-steering boid))))
 
 (defmethod update-entity ((boid boid) (world world) dt)
   (with-slots (position velocity decision-cooldown)
       boid
     (flet ((apply-force (force)
              (p2dm:add-to-vector velocity (p2dm:scaled-vector force dt))
-             (p2dm:clamp-vector velocity +max-boid-speed+)))
+             (p2dm:clamp-vector velocity (max-speed boid))))
       (p2dm:add-to-vector position (p2dm:scaled-vector velocity dt))
       (let ((desired (apply-behaviours boid world)))
         (ddv position (p2dm:scaled-vector desired 10.0) :desired)
-        (apply-force (steering velocity desired))))
+        (apply-force (steering boid velocity desired))))
 
     (decf decision-cooldown dt)
     (maxf decision-cooldown 0.0)))
@@ -415,6 +426,12 @@
                      :player (when (can-see-point (entity-position (player world)))
                                (player world))))))
 
+(defmethod max-speed ((wolf wolf))
+  +max-wolf-speed+)
+
+(defmethod max-steering ((wolf wolf))
+  +max-wolf-steering+)
+
 (defmethod update-entity ((wolf wolf) (world world) dt)
   (decf (wolf-eating-cooldown wolf) dt)
   (maxf (wolf-eating-cooldown wolf) 0)
@@ -488,6 +505,8 @@ Returns the smallest compared value (as given by `KEY' function) as a second ret
         (lambda (boid world)
           (avoid-player boid (player world))) ; player avoidance
         (lambda (boid world)
+          (avoid-dangers boid (dangers world))) ; dangers avoidance
+        (lambda (boid world)
           (chase-food boid (food world))) ; food chasing
         (lambda (boid world)
           (wander-around boid (friendlies world))) ; wandering around
@@ -499,6 +518,8 @@ Returns the smallest compared value (as given by `KEY' function) as a second ret
           (p2dm:make-vector-2d 0.0 1.0))))
 
 (defun make-default-wolf-behaviours ()
+  ;; FIXME note just how much of the behaviours is shared with sheep
+  ;; that cries out for some refactoring
   (list (lambda (boid world)
           (com boid (friendlies world)))
         (lambda (boid world)
@@ -509,8 +530,8 @@ Returns the smallest compared value (as given by `KEY' function) as a second ret
           (avoid-walls boid))
         (lambda (boid world)
           (avoid-player boid (player world)))
-        ;; TODO chase food for wolves
-
+        (lambda (boid world)
+          (chase-sheep boid (food world)))
         ;; TODO stay away from houses area for wolves
         (lambda (boid world)
           (wander-around boid (friendlies world)))
@@ -592,6 +613,17 @@ Returns the smallest compared value (as given by `KEY' function) as a second ret
                         lr)))
    (p2dm:make-vector-2d)))
 
+(defun avoid-dangers (boid dangers)
+  (let ((dangers-cnt (length dangers)))
+    (if (> dangers-cnt 0)
+        (let ((dangers-center (p2dm:scaled-vector (reduce #'p2dm:add-vectors dangers :key #'entity-position)
+                                                  (/ 1.0 dangers-cnt))))
+          (static-priority (ddv (entity-position boid)
+                                (p2dm:subtract-vectors (entity-position boid) dangers-center)
+                                :dangers)
+                           1.0))
+        (p2dm:make-vector-2d))))
+
 (defun chase-food (boid food)    ;FIXME works only on sheep; ensure no other boids happen to use it.
   "Behaviour to chase `FOOD'."
   (let* ((food-cnt (length food))
@@ -627,6 +659,23 @@ Returns the smallest compared value (as given by `KEY' function) as a second ret
                                                   :wandering)
                                              0.3))))))
    (p2dm:make-vector-2d)))
+
+(defun chase-sheep (boid all-visible-sheep)
+  (let* ((food-cnt (length all-visible-sheep))
+         (boid-position (entity-position boid))
+         (closest-food (find-smallest all-visible-sheep
+                                      :test (lambda (p1 p2)
+                                              (< (p2dm:distance-between-vectors-squared p1 boid-position)
+                                                 (p2dm:distance-between-vectors-squared p2 boid-position)))
+                                      :key #'entity-position)))
+    (or
+     (when (and (> food-cnt 0)
+                (<= (wolf-eating-cooldown boid) 0))
+       (static-priority (ddv (entity-position boid)
+                             (p2dm:subtract-vectors (entity-position closest-food) (entity-position boid))
+                             :food-chasing)
+                        +behaviour-priority-max+))
+     (p2dm:make-vector-2d))))
 
 
 (defun key-pressed-p (scancode)
