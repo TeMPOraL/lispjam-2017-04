@@ -35,6 +35,8 @@
 
 (defparameter +sheep-house-color+ (p2dg:make-color-4 0.5 0.25 0 1))
 
+(defparameter +wolf-color+ (p2dg:make-color-4 1.0 0.2 0.2 1))
+
 
 ;;; World
 
@@ -62,6 +64,10 @@
    (saved-sheep :initform '()
                 :initarg :saved-sheep
                 :accessor saved-sheep)
+
+   (wolves :initform '()
+           :initarg :wolves
+           :accessor wolves)
 
    (player :initform (error "Player needs to be specified explicitly.")
            :initarg :player
@@ -291,7 +297,9 @@
                                                   (and (can-see-point (entity-position other))
                                                        (not (eq other boid))))
                                                 (boids world))
-                     :dangers '()
+                     :dangers (remove-if-not #'can-see-point
+                                             (wolves world)
+                                             :key #'entity-position)
                      :food (remove-if-not #'can-see-point
                                           (food world)
                                           :key #'entity-position)
@@ -382,6 +390,42 @@
         (make-default-saved-sheep-behaviours)))
 
 
+;;; Wolf
+(defclass wolf (boid)
+  ((wolf-eating-cooldown :initform 0.0
+                         :initarg :eating-cooldown
+                         :accessor wolf-eating-cooldown))
+  (:default-initargs
+   :color +wolf-color+))
+
+(defmethod perceive ((wolf wolf) (world world))
+  (with-slots (position perception-range)
+      wolf
+    (flet ((can-see-point (point)       ;TODO expand to limited forward vision
+             (< (p2dm:distance-between-vectors position point) perception-range)))
+      (ddp position perception-range :sight-range)
+      (make-instance 'perceived-world
+                     :friendlies (remove-if-not (lambda (other)
+                                                  (and (can-see-point (entity-position other))
+                                                       (not (eq other wolf))))
+                                                (wolves world))
+                     :food (remove-if-not #'can-see-point ;HACK using boids as food xD
+                                          (boids world)
+                                          :key #'entity-position)
+                     :player (when (can-see-point (entity-position (player world)))
+                               (player world))))))
+
+(defmethod update-entity ((wolf wolf) (world world) dt)
+  (decf (wolf-eating-cooldown wolf) dt)
+  (maxf (wolf-eating-cooldown wolf) 0)
+  (call-next-method wolf world dt))
+
+(defmethod draw-entity ((wolf wolf))
+  (with-slots (position velocity color)
+      wolf
+    (draw-wolf position (- (p2dm:vector-angle-2d velocity) (/ pi 2)) color)))
+
+
 ;;; Behaviour utilities.
 
 (defparameter +behaviour-priority-min+ 0.0)
@@ -453,6 +497,24 @@ Returns the smallest compared value (as given by `KEY' function) as a second ret
   (list (lambda (boid world)
           (declare (ignore boid world))
           (p2dm:make-vector-2d 0.0 1.0))))
+
+(defun make-default-wolf-behaviours ()
+  (list (lambda (boid world)
+          (com boid (friendlies world)))
+        (lambda (boid world)
+          (align boid (friendlies world)))
+        (lambda (boid world)
+          (separate boid (friendlies world)))
+        (lambda (boid world)
+          (avoid-walls boid))
+        (lambda (boid world)
+          (avoid-player boid (player world)))
+        ;; TODO chase food for wolves
+
+        ;; TODO stay away from houses area for wolves
+        (lambda (boid world)
+          (wander-around boid (friendlies world)))
+        ))                         ; TODO
 
 (defun com (boid all-boids)
   "Center of mass of `BOIDS'."
@@ -574,11 +636,17 @@ Returns the smallest compared value (as given by `KEY' function) as a second ret
   (add-boid x y)
   (log:trace (boids *world*)))
 
-(defun right-click-handler (x y)
+(defun mid-click-handler (x y)
   (add-food x y))
+
+(defun right-click-handler (x y)
+  (add-wolf x y))
 
 (defun update-world (dt)
   (update-all-boids *world* dt)
+  (loop for w in (wolves *world*)
+     do (update-entity w *world* dt))
+
   (update-entity (player *world*) *world* dt)
 
   (loop for gf in (grazing-fields *world*)
@@ -601,6 +669,9 @@ Returns the smallest compared value (as given by `KEY' function) as a second ret
      do (draw-entity gf))
 
   (draw-all-boids)
+
+  (loop for w in (wolves *world*)
+     do (draw-entity w))
 
   (loop for s in (saved-sheep *world*)
      do (draw-entity s))
@@ -664,6 +735,14 @@ Returns the smallest compared value (as given by `KEY' function) as a second ret
                        :position (p2dm:make-vector-2d x y))
         (food *world*)))
 
+(defun add-wolf (x y)
+  (push (make-instance 'wolf
+                       :position (p2dm:make-vector-2d x y)
+                       :velocity (p2dm:rotated-vector-2d (p2dm:make-vector-2d 30.0 0.0)
+                                                         (p2dm:random-float 0.0 p2dm:+2pi+))
+                       :boid-behaviours (make-default-wolf-behaviours))
+        (wolves *world*)))
+
 
 
 (defun draw-boid (position orientation color)
@@ -691,4 +770,12 @@ Returns the smallest compared value (as given by `KEY' function) as a second ret
     (p2dglu:color4 color)
     (p2dglu:rotatez* (- orientation (/ p2dm:+pi+ 2)))
     (gl:scale 7 10 7)
+    (p2dglu:draw-triangle)))
+
+(defun draw-wolf (position orientation color)
+  (gl:with-pushed-matrix
+    (p2dglu:translate2 position)
+    (p2dglu:color4 color)
+    (p2dglu:rotatez* orientation)
+    (gl:scale 3 4 3)
     (p2dglu:draw-triangle)))

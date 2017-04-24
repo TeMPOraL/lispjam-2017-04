@@ -69,6 +69,10 @@
 
     (when (and (= button 2)
                (= state 1))
+      (mid-click-handler rx ry))
+
+    (when (and (= button 3)
+               (= state 1))
       (right-click-handler rx ry))
 
     ;; TODO button 3 will be for wolves :).
