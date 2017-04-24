@@ -28,12 +28,13 @@ To implement, in order of MVP-importance:
 - [X] sheep house
 - [X] full sheep that enter stay there
 - [X] wolves
+- [X] wolf packs (flocking behaviour)
 - [X] STRONGER GAME AREA BORDER LIMITS
-- [ ] wolves kill sheep on contact
+- [X] wolves kill sheep on contact
 - [ ] ship house is off-limits to wolves
 - [ ] points display
 - [ ] time display
-- [ ] wolf packs (flocking behaviour)
+- [ ] starting setup for entities (i.e. level(s))
 - [ ] obstacles
 
 Also

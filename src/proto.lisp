@@ -16,8 +16,8 @@
 
 (defparameter +boid-perception-range+ 50)
 
-(defparameter +player-base-speed+ 30)
-(defparameter +player-running-speed+ 60)
+(defparameter +player-base-speed+ 50)
+(defparameter +player-running-speed+ 90)
 (defparameter +player-slow-speed+ 10)
 (defparameter +player-angular-speed+ p2dm:+pi+)
 
@@ -39,6 +39,14 @@
 (defparameter +sheep-house-color+ (p2dg:make-color-4 0.5 0.25 0 1))
 
 (defparameter +wolf-color+ (p2dg:make-color-4 1.0 0.2 0.2 1))
+(defparameter +wolf-size+ 3.0)
+(defparameter +wolf-eating-cooldown+ 3.0)
+(defparameter +wolf-eating-speed+ 1.0)
+
+
+
+(defvar *sheeps-saved* 0)
+(defvar *sheeps-dead* 0)
 
 
 ;;; World
@@ -74,7 +82,11 @@
 
    (player :initform (error "Player needs to be specified explicitly.")
            :initarg :player
-           :accessor player)))
+           :accessor player)
+
+   (doodads :initform '()
+            :initarg :doodads
+            :accessor doodads)))
 
 (defclass perceived-world ()
   ((friendlies :initform '()
@@ -122,6 +134,28 @@
       entity
     (p2dm:clampf (p2dm:vec-x position) 0.0 (float p2d:*canvas-width*))
     (p2dm:clampf (p2dm:vec-y position) 0.0 (float p2d:*canvas-height*))))
+
+
+
+(defclass doodad (entity)
+  ((orientation :initarg :doodad-orientation
+                :initform (p2dm:random-float 0.0 p2dm:+2pi+)
+                :accessor doodad-orientation)))
+
+(defclass dead-sheep (doodad)
+  ()
+  (:default-initargs
+   :color (p2dg:make-color-4 1.0 0.0 0.0 1.0)))
+
+(defmethod draw-entity ((doodad doodad))
+  (with-slots (position orientation color)
+      doodad
+    (draw-doodad position orientation color)))
+
+(defun spawn-dead-sheep (position world)
+  (push (make-instance 'dead-sheep
+                       :position (p2dm:scaled-vector position 1.0)) ;copying the vector just in case
+        (doodads world)))
 
 
 ;;; Food
@@ -409,8 +443,14 @@
   (setf (boids world)
         (delete sheep (boids world)))
   (setf (boid-behaviours sheep)
-        (make-default-saved-sheep-behaviours)))
+        (make-default-saved-sheep-behaviours))
+  (incf *sheeps-saved*))
 
+(defun kill-sheep (sheep world)
+  (spawn-dead-sheep (entity-position sheep) world)
+  (setf (boids world)
+        (delete sheep (boids world)))
+  (incf *sheeps-dead*))
 
 ;;; Wolf
 (defclass wolf (boid)
@@ -447,12 +487,20 @@
   (decf (wolf-eating-cooldown wolf) dt)
   (maxf (wolf-eating-cooldown wolf) 0)
   (call-next-method wolf world dt)
+  (when (wolf-eating-p wolf)
+    (setf (p2dm:vector-value (entity-velocity wolf)) +sheep-eating-speed+))
   (clamp-to-game-area-boundaries wolf))
 
 (defmethod draw-entity ((wolf wolf))
   (with-slots (position velocity color)
       wolf
     (draw-wolf position (- (p2dm:vector-angle-2d velocity) (/ pi 2)) color)))
+
+(defun wolf-eating-p (wolf)
+  (> (wolf-eating-cooldown wolf) 0))
+
+(defun feed-wolf (wolf)
+  (setf (wolf-eating-cooldown wolf) +wolf-eating-cooldown+))
 
 
 ;;; Behaviour utilities.
@@ -719,6 +767,9 @@ Returns the smallest compared value (as given by `KEY' function) as a second ret
   (loop for s in (saved-sheep *world*)
      do (update-entity s *world* dt))
 
+  (loop for d in (doodads *world*)
+     do (update-entity d *world* dt))
+
   (handle-collisions *world*)
   (remove-eaten-food *world*))
 
@@ -728,6 +779,9 @@ Returns the smallest compared value (as given by `KEY' function) as a second ret
 
   (loop for gf in (grazing-fields *world*)
      do (draw-entity gf))
+
+  (loop for d in (doodads *world*)
+     do (draw-entity d))
 
   (draw-all-boids)
 
@@ -770,12 +824,23 @@ Returns the smallest compared value (as given by `KEY' function) as a second ret
         (setf (sheep-grazing-cooldown sheep) +sheep-grazing-cooldown-time+
               (food-eaten-p food) t)
         (decf (sheep-hunger sheep) 0.5)))  ;FIXME magic
+
     ;; Handle sheep/houses collisions.
     (dolist (house (houses world))
       (when (and (sheep-full-p sheep)
                  (entity-in-field-p sheep house))
         (transfer-sheep-to-house sheep world)
         (return)                        ; break houses iteration for that sheep
+        ))
+
+    ;; Handle sheep/wolves collisions.
+    (dolist (wolf (wolves world))
+      (when (and (not (wolf-eating-p wolf))
+                 (spheres-collide-p (entity-position sheep) (entity-position wolf) +sheep-size+ +wolf-size+))
+        (kill-sheep sheep world)
+        (feed-wolf wolf)
+        (return)                        ; break wolves iteration for that sheep
+
         ))))
 
 (defun remove-eaten-food (world)
@@ -840,3 +905,11 @@ Returns the smallest compared value (as given by `KEY' function) as a second ret
     (p2dglu:rotatez* orientation)
     (gl:scale 3 4 3)
     (p2dglu:draw-triangle)))
+
+(defun draw-doodad (position orientation color)
+  (gl:with-pushed-matrix
+    (p2dglu:translate2 position)
+    (p2dglu:color4 color)
+    (p2dglu:rotatez* orientation)
+    (gl:scale 5 5 5)
+    (p2dglu:draw-square)))
