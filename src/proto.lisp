@@ -21,8 +21,8 @@
 (defparameter +player-slow-speed+ 10)
 (defparameter +player-angular-speed+ p2dm:+pi+)
 
-(defparameter +sheep-hungry-color+ (p2dg:make-color-4 0 0 1 1))
-(defparameter +sheep-full-color+ (p2dg:make-color-4 0 1 0 1))
+(defparameter +sheep-hungry-color+ (p2dg:make-color-4 0.2 0.2 0.2 1))
+(defparameter +sheep-full-color+ (p2dg:make-color-4 0.9 0.9 0.9 1))
 
 (defparameter +sheep-size+ 2.5)
 (defparameter +sheep-grazing-cooldown-time+ 2.0)
@@ -436,7 +436,10 @@
 (defmethod draw-entity ((sheep sheep))
   (with-slots (position velocity hunger blackp)
       sheep
-    (draw-sheep position (- (p2dm:vector-angle-2d velocity) (/ pi 2)) (p2dg:lerp-color hunger +sheep-full-color+ +sheep-hungry-color+))))
+    (draw-sheep position
+                (- (p2dm:vector-angle-2d velocity) (/ pi 2))
+                (p2dg:lerp-color hunger +sheep-full-color+ +sheep-hungry-color+)
+                (sheep-full-p sheep))))
 
 (defun transfer-sheep-to-house (sheep world)
   (push sheep (saved-sheep world))
@@ -879,12 +882,14 @@ Returns the smallest compared value (as given by `KEY' function) as a second ret
     (gl:scale 4 8 4)
     (p2dglu:draw-triangle)))
 
-(defun draw-sheep (position orientation color)
+(defun draw-sheep (position orientation color fullp)
   (gl:with-pushed-matrix
     (p2dglu:color4 color)               ;FIXME blending? how?
     (p2dglu:translate2 position)
     (p2dglu:rotatez* orientation)
-    (gl:scale 4 6 4)
+    (if fullp
+        (gl:scale 5 7.5 5)
+        (gl:scale 4 6 4))
     (p2dglu:draw-circle)
     (gl:translate 0 1 0)
     (gl:scale 0.5 0.5 0.5)

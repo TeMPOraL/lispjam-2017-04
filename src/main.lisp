@@ -19,7 +19,7 @@
   (log:info "Initializing game.")
 
   ;; Graphics defaults
-  (gl:clear-color 1.0 1.0 1.0 1.0)
+  (gl:clear-color 0.6901961 0.84705883 0.28235295 1.0)
 
   ;; (sdl2:gl-set-swap-interval 0) <-- use to disable vsync
 
