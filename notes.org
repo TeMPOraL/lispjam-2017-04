@@ -32,8 +32,8 @@ To implement, in order of MVP-importance:
 - [X] STRONGER GAME AREA BORDER LIMITS
 - [X] wolves kill sheep on contact
 - [ ] ship house is off-limits to wolves
-- [ ] points display
-- [ ] time display
+- [X] points display (saved / dead)
+- [ ] +time display+ not really, no.
 - [ ] starting setup for entities (i.e. level(s))
 - [ ] obstacles
 

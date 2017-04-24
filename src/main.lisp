@@ -1,5 +1,8 @@
 (in-package #:lispjam-2017-04-temporal)
 
+(defvar *default-mono-font* nil)
+(defvar *smaller-mono-font* nil)
+
 (defclass ljgame (p2d:game)
   ())
 
@@ -26,7 +29,11 @@
   (gl:hint :line-smooth-hint :nicest)
   (gl:enable :polygon-smooth)
   (gl:hint :polygon-smooth-hint :nicest)
+  (gl:enable :texture-2d)
 
+  ;; fonts
+  (setf *default-mono-font* (p2dg:get-rendered-font "assets/fonts/VeraMoBd.ttf" :size 16))
+  (setf *smaller-mono-font* (p2dg:get-rendered-font "assets/fonts/VeraMono.ttf" :size 12))
 
   ;; game initialize
   (setf *world* (make-instance 'world
@@ -87,6 +94,20 @@
 
 (defmethod p2d:on-render ((game ljgame) dt)
   (draw-world)
+
+  (p2dg:with-color (0 0 0)
+    (p2dg::draw-text (format nil "Lost: ~D" *sheeps-dead*)
+                     :font *default-mono-font*
+                     :size 16
+                     :x 580
+                     :y 580
+                     )
+    (p2dg::draw-text (format nil "Saved: ~D" *sheeps-saved*)
+                     :font *default-mono-font*
+                     :size 16
+                     :x 680
+                     :y 580))
+
   (draw-debug-markers)
   (clear-debug-markers))
 
