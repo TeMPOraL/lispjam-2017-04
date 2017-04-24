@@ -21,7 +21,7 @@
 (defparameter +sheep-hungry-color+ (p2dg:make-color-4 0 0 1 1))
 (defparameter +sheep-full-color+ (p2dg:make-color-4 0 1 0 1))
 
-(defparameter +sheep-size+ 2.0)
+(defparameter +sheep-size+ 2.5)
 (defparameter +sheep-grazing-cooldown-time+ 2.0)
 (defparameter +sheep-eating-speed+ 1.0)
 
@@ -32,6 +32,8 @@
 (defparameter +grazing-field-spawn-cooldown-min+ 5.0)
 (defparameter +grazing-field-spawn-cooldown-max+ 14.0)
 (defparameter +max-simultaneous-food+ 20)
+
+(defparameter +sheep-house-color+ (p2dg:make-color-4 0.5 0.25 0 1))
 
 
 ;;; World
@@ -60,10 +62,6 @@
    (saved-sheep :initform '()
                 :initarg :saved-sheep
                 :accessor saved-sheep)
-
-   (sheep-house :initform nil           ;TODO
-                :initarg :sheep-house
-                :accessor sheep-house)
 
    (player :initform (error "Player needs to be specified explicitly.")
            :initarg :player
@@ -136,15 +134,30 @@
       (p2dglu:draw-square))))
 
 
-;;; Grazing field
-(defclass grazing-field (entity)
+;;; A field. Basically a rectangle.
+
+(defclass field (entity)
   ((width :initform 100
           :initarg :width
-          :accessor grazing-field-width)
+          :accessor field-width)
    (height :initform 100
            :initarg :height
-           :accessor grazing-field-height)
-   (food-spawn-cooldown :initform 0.0
+           :accessor field-height)))
+
+(defmethod draw-entity ((field field))
+  (with-slots (position color width height)
+      field
+    (gl:with-pushed-matrix
+      (p2dglu:translate2 position)
+      (gl:scale (/ width 2) (/ height 2) 1)
+      (p2dglu:color4 color)
+      (p2dglu:draw-square))))
+
+
+
+;;; Grazing field
+(defclass grazing-field (field)
+  ((food-spawn-cooldown :initform 0.0
                         :initarg :food-spawn-cooldown
                         :accessor grazing-field-food-spawn-cooldown))
   (:default-initargs
@@ -164,20 +177,35 @@
                 (p2dm:random-float (- (p2dm:vec-y position) (/ height 2))
                                    (+ (p2dm:vec-y position) (/ height 2)))))))
 
-(defmethod draw-entity ((field grazing-field))
-  (with-slots (position color width height)
-      field
-    (gl:with-pushed-matrix
-      (p2dglu:translate2 position)
-      (gl:scale (/ width 2) (/ height 2) 1)
-      (p2dglu:color4 color)
-      (p2dglu:draw-square))))
 
 (defun make-default-grazing-fields ()
   (list (make-instance 'grazing-field
                        :position (p2dm:make-vector-2d 400.0 300.0))
         (make-instance 'grazing-field
                        :position (p2dm:make-vector-2d 500.0 200.0))))
+
+
+(defclass sheep-house (field)
+  ()
+  (:default-initargs
+   :color +sheep-house-color+))
+
+(defun make-default-sheep-houses ()
+  (list (make-instance 'sheep-house
+                       :position (p2dm:make-vector-2d 400.0 575.0)
+                       :width 100.0
+                       :height 50.0)))
+
+(defun entity-in-field-p (entity field)
+  ;; NOTE will work only on axis-aligned fields
+  (with-slots ((epos position))
+      entity
+    (with-slots ((fpos position) width height)
+        field
+      (let ((sx (- (p2dm:vec-x fpos) (/ width 2)))
+            (sy (- (p2dm:vec-y fpos) (/ height 2))))
+        (and (< sx (p2dm:vec-x epos) (+ sx width))
+             (< sy (p2dm:vec-y epos) (+ sy height)))))))
 
 
 (defclass player (entity)
@@ -347,7 +375,7 @@
     (draw-sheep position (- (p2dm:vector-angle-2d velocity) (/ pi 2)) (p2dg:lerp-color hunger +sheep-full-color+ +sheep-hungry-color+))))
 
 (defun transfer-sheep-to-house (sheep world)
-  (push sheep (sheep-house world))
+  (push sheep (saved-sheep world))
   (setf (boids world)
         (delete sheep (boids world)))
   (setf (boid-behaviours sheep)
@@ -422,11 +450,9 @@ Returns the smallest compared value (as given by `KEY' function) as a second ret
         ))
 
 (defun make-default-saved-sheep-behaviours ()
-  ;; TODO
-  ;; - avoidance
-  ;; - stay within walls
-  ;; - wander around
-  (list))
+  (list (lambda (boid world)
+          (declare (ignore boid world))
+          (p2dm:make-vector-2d 0.0 1.0))))
 
 (defun com (boid all-boids)
   "Center of mass of `BOIDS'."
@@ -558,14 +584,27 @@ Returns the smallest compared value (as given by `KEY' function) as a second ret
   (loop for gf in (grazing-fields *world*)
      do (update-entity gf *world* dt))
 
+  (loop for h in (houses *world*)
+     do (update-entity h *world* dt))
+
+  (loop for s in (saved-sheep *world*)
+     do (update-entity s *world* dt))
+
   (handle-collisions *world*)
   (remove-eaten-food *world*))
 
 (defun draw-world ()
+  (loop for h in (houses *world*)
+     do (draw-entity h))
+
   (loop for gf in (grazing-fields *world*)
      do (draw-entity gf))
 
   (draw-all-boids)
+
+  (loop for s in (saved-sheep *world*)
+     do (draw-entity s))
+  
   (draw-food)
   (draw-entity (player *world*)))
 
@@ -591,13 +630,21 @@ Returns the smallest compared value (as given by `KEY' function) as a second ret
 
 (defun handle-collisions (world)
   (dolist (sheep (boids world))
+    ;; Handle sheep/food collisions.
     (dolist (food (food world))
       (when (and (not (food-eaten-p food))
                  (> (sheep-hunger sheep) 0.0)
                  (spheres-collide-p (entity-position sheep) (entity-position food) +sheep-size+ (food-size food)))
         (setf (sheep-grazing-cooldown sheep) +sheep-grazing-cooldown-time+
               (food-eaten-p food) t)
-        (decf (sheep-hunger sheep) 0.5))))) ;FIXME magic
+        (decf (sheep-hunger sheep) 0.5)))  ;FIXME magic
+    ;; Handle sheep/houses collisions.
+    (dolist (house (houses world))
+      (when (and (sheep-full-p sheep)
+                 (entity-in-field-p sheep house))
+        (transfer-sheep-to-house sheep world)
+        (return)                        ; break houses iteration for that sheep
+        ))))
 
 (defun remove-eaten-food (world)
   (setf (food world) (delete-if #'food-eaten-p (food world))))

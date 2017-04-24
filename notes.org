@@ -25,8 +25,8 @@ To implement, in order of MVP-importance:
 - [X] pastures - random food spawning
 - [X] sheeps wandering when lonely
 - [X] better gfx for sheep (instead of triangle)
-- [ ] sheep house
-- [ ] full sheep that enter stay there
+- [X] sheep house
+- [X] full sheep that enter stay there
 - [ ] wolves
 - [ ] ship house is off-limits to wolves
 - [ ] wolves kill sheep on contact
