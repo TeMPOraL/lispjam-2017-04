@@ -25,10 +25,6 @@
 
   (gl:blend-func :src-alpha :one-minus-src-alpha)
   (gl:enable :blend)
-  (gl:enable :line-smooth)
-  (gl:hint :line-smooth-hint :nicest)
-  (gl:enable :polygon-smooth)
-  (gl:hint :polygon-smooth-hint :nicest)
   (gl:enable :texture-2d)
 
   ;; fonts
@@ -36,10 +32,7 @@
   (setf *smaller-mono-font* (p2dg:get-rendered-font "assets/fonts/VeraMono.ttf" :size 12))
 
   ;; game initialize
-  (setf *world* (make-instance 'world
-                               :player (make-default-player)
-                               :grazing-fields (make-default-grazing-fields)
-                               :houses (make-default-sheep-houses))))
+  (setf *world* (make-world 1)))
 
 (defmethod p2d:deinitialize ((game ljgame))
   ;; TODO

@@ -44,7 +44,23 @@
 (defparameter +wolf-eating-cooldown+ 3.0)
 (defparameter +wolf-eating-speed+ 1.0)
 
+(defparameter +level-base-sheep-number+ 3)
+(defparameter +level-sheep-number-difficulty-increment+ 2)
+
+(defparameter +level-base-wolves-number+ 2)
+(defparameter +level-wolves-number-difficulty-increment+ 1)
+
+(defparameter +spawn-sheep-area-x-start+ 200)
+(defparameter +spawn-sheep-area-y-start+ 500)
+(defparameter +spawn-sheep-area-width+ 400)
+(defparameter +spawn-sheep-area-height+ 75)
+(defparameter +spawn-wolves-area-x-start+ 200)
+(defparameter +spawn-wolves-area-y-start+ 0)
+(defparameter +spawn-wolves-area-width+ 400)
+(defparameter +spawn-wolves-area-height+ 20)
+
 
+;;; Scores
 
 (defvar *sheeps-saved* 0)
 (defvar *sheeps-dead* 0)
@@ -227,24 +243,11 @@
                 (p2dm:random-float (- (p2dm:vec-y position) (/ height 2))
                                    (+ (p2dm:vec-y position) (/ height 2)))))))
 
-
-(defun make-default-grazing-fields ()
-  (list (make-instance 'grazing-field
-                       :position (p2dm:make-vector-2d 400.0 300.0))
-        (make-instance 'grazing-field
-                       :position (p2dm:make-vector-2d 500.0 200.0))))
-
 
 (defclass sheep-house (field)
   ()
   (:default-initargs
    :color +sheep-house-color+))
-
-(defun make-default-sheep-houses ()
-  (list (make-instance 'sheep-house
-                       :position (p2dm:make-vector-2d 400.0 575.0)
-                       :width 100.0
-                       :height 50.0)))
 
 (defun entity-in-field-p (entity field)
   ;; NOTE will work only on axis-aligned fields
@@ -301,10 +304,6 @@
       player
     (draw-player position orientation color)))
 
-(defun make-default-player ()
-  (make-instance 'player
-                 :position (p2dm:make-vector-2d (/ p2d:*canvas-width* 2.0) (/ p2d:*canvas-height* 2.0))
-                 :color +player-color+))
 
 
 (defparameter *world* nil)
@@ -919,3 +918,78 @@ Returns the smallest compared value (as given by `KEY' function) as a second ret
     (p2dglu:rotatez* orientation)
     (gl:scale 5 5 5)
     (p2dglu:draw-square)))
+
+
+
+;;; Proper level creation.
+;;; My oh my, we're nearing 1k LOC here...
+
+(defun random-point-in-rect (x y w h)
+  (p2dm:make-vector-2d (p2dm:random-float x (+ x w))
+                       (p2dm:random-float y (+ y h))))
+
+(defun make-sheep-herd (difficulty)
+  (let* ((num-sheep (+ +level-base-sheep-number+
+                       (* +level-sheep-number-difficulty-increment+ difficulty)))
+         (x-increment (/ +spawn-sheep-area-width+ num-sheep))
+         (result '()))
+    (dotimes (n num-sheep result)
+      (push (make-instance 'sheep
+                           :position (random-point-in-rect (+ +spawn-sheep-area-x-start+ (* n x-increment))
+                                                           +spawn-sheep-area-y-start+
+                                                           x-increment
+                                                           +spawn-sheep-area-height+)
+                           :velocity (p2dm:rotated-vector-2d (p2dm:make-vector-2d 30.0 0.0)
+                                                             (p2dm:random-float p2dm:+pi+ p2dm:+2pi+))
+                           :boid-behaviours (make-default-boid-behaviours))
+            result))))
+
+(defun make-wolf-packs (difficulty)
+  (let* ((num-wolves (+ +level-base-wolves-number+
+                        (* +level-wolves-number-difficulty-increment+ difficulty)))
+         (x-increment (/ +spawn-wolves-area-width+ num-wolves))
+         (result '()))
+    (dotimes (n num-wolves result)
+      (push (make-instance 'wolf
+                           :position (random-point-in-rect (+ +spawn-wolves-area-x-start+ (* n x-increment))
+                                                           +spawn-wolves-area-y-start+
+                                                           x-increment
+                                                           +spawn-wolves-area-height+)
+                           :boid-behaviours (make-default-wolf-behaviours))
+            result))))
+
+(defun make-default-grazing-fields ()
+  (list (make-instance 'grazing-field
+                       :position (p2dm:make-vector-2d 200.0 450.0)
+                       :width 300
+                       :height 100)
+        (make-instance 'grazing-field
+                       :position (p2dm:make-vector-2d 600.0 300.0)
+                       :width 300
+                       :height 100)
+        (make-instance 'grazing-field
+                       :position (p2dm:make-vector-2d 300.0 250.0)
+                       :width 150
+                       :height 150)))
+
+(defun make-default-sheep-houses ()
+  (list (make-instance 'sheep-house
+                       :position (p2dm:make-vector-2d 400.0 585.0)
+                       :width 200.0
+                       :height 30.0)))
+
+(defun make-default-player ()
+  (make-instance 'player
+                 :position (p2dm:make-vector-2d (/ p2d:*canvas-width* 2.0) (/ p2d:*canvas-height* 2.0))
+                 :velocity (p2dm:make-vector-2d 0.0 1.0)
+                 :color +player-color+))
+
+(defun make-world (difficulty)
+  "Make a world. `DIFFICULTY' is a fixnum meaning something; generally the higher the value,
+the worse player is off.."
+  (make-instance 'world
+                 :boids (make-sheep-herd difficulty)
+                 :wolves (make-wolf-packs difficulty)
+                 :player (make-default-player)
+                 :grazing-fields (make-default-grazing-fields)
+                 :houses (make-default-sheep-houses)))
