@@ -16,12 +16,13 @@
 
 (defparameter +boid-perception-range+ 50)
 
+(defparameter +player-color+ (p2dg:make-color-4 0.5 0.25 0.0 1.0))
 (defparameter +player-base-speed+ 50)
 (defparameter +player-running-speed+ 90)
 (defparameter +player-slow-speed+ 10)
 (defparameter +player-angular-speed+ p2dm:+pi+)
 
-(defparameter +sheep-hungry-color+ (p2dg:make-color-4 0.2 0.2 0.2 1))
+(defparameter +sheep-hungry-color+ (p2dg:make-color-4 0.3 0.3 0.3 1))
 (defparameter +sheep-full-color+ (p2dg:make-color-4 0.9 0.9 0.9 1))
 
 (defparameter +sheep-size+ 2.5)
@@ -36,9 +37,9 @@
 (defparameter +grazing-field-spawn-cooldown-max+ 14.0)
 (defparameter +max-simultaneous-food+ 20)
 
-(defparameter +sheep-house-color+ (p2dg:make-color-4 0.5 0.25 0 1))
+(defparameter +sheep-house-color+ (p2dg:make-color-4 0.7 0.5 0 1))
 
-(defparameter +wolf-color+ (p2dg:make-color-4 1.0 0.2 0.2 1))
+(defparameter +wolf-color+ (p2dg:make-color-4 0.0 0.0 0.0 1))
 (defparameter +wolf-size+ 3.0)
 (defparameter +wolf-eating-cooldown+ 3.0)
 (defparameter +wolf-eating-speed+ 1.0)
@@ -303,7 +304,7 @@
 (defun make-default-player ()
   (make-instance 'player
                  :position (p2dm:make-vector-2d (/ p2d:*canvas-width* 2.0) (/ p2d:*canvas-height* 2.0))
-                 :color (p2dg:make-color-4 1.0 0.0 0.0 1.0)))
+                 :color +player-color+))
 
 
 (defparameter *world* nil)
@@ -908,7 +909,7 @@ Returns the smallest compared value (as given by `KEY' function) as a second ret
     (p2dglu:translate2 position)
     (p2dglu:color4 color)
     (p2dglu:rotatez* orientation)
-    (gl:scale 3 4 3)
+    (gl:scale 4 6 4)
     (p2dglu:draw-triangle)))
 
 (defun draw-doodad (position orientation color)
