@@ -117,6 +117,12 @@
       (p2dglu:color4 color)
       (p2dglu:draw-square))))
 
+(defmethod clamp-to-game-area-boundaries ((entity entity))
+  (with-slots (position)
+      entity
+    (p2dm:clampf (p2dm:vec-x position) 0.0 (float p2d:*canvas-width*))
+    (p2dm:clampf (p2dm:vec-y position) 0.0 (float p2d:*canvas-height*))))
+
 
 ;;; Food
 (defclass food (entity)
@@ -253,9 +259,7 @@
                                        speed))
     (p2dm:add-to-vector position (p2dm:scaled-vector velocity dt))
 
-    ;; clamp position to game boundaries
-    (p2dm:clampf (p2dm:vec-x position) 0.0 (float p2d:*canvas-width*))
-    (p2dm:clampf (p2dm:vec-y position) 0.0 (float p2d:*canvas-height*))))
+    (clamp-to-game-area-boundaries player)))
 
 (defmethod draw-entity ((player player))
   (with-slots (position orientation color)
@@ -366,8 +370,11 @@
   (<= (sheep-hunger sheep)
       0.0))
 
+(defun sheep-saved-p (sheep world)
+  (member sheep (saved-sheep world)))
+
 (defmethod perceive ((sheep sheep) (world world))
-  (if (member sheep (saved-sheep world))
+  (if (sheep-saved-p sheep world)
       (make-instance 'perceived-world
                      :friendlies '()
                      :dangers '()
@@ -386,7 +393,11 @@
   (maxf (sheep-grazing-cooldown sheep) 0)
   (call-next-method sheep world dt)
   (when (> (sheep-grazing-cooldown sheep) 0)
-    (setf (p2dm:vector-value (entity-velocity sheep)) +sheep-eating-speed+)))
+    (setf (p2dm:vector-value (entity-velocity sheep)) +sheep-eating-speed+))
+
+  ;; clamp position to game boundaries
+  (unless (sheep-saved-p sheep world)
+    (clamp-to-game-area-boundaries sheep)))
 
 (defmethod draw-entity ((sheep sheep))
   (with-slots (position velocity hunger blackp)
@@ -435,7 +446,8 @@
 (defmethod update-entity ((wolf wolf) (world world) dt)
   (decf (wolf-eating-cooldown wolf) dt)
   (maxf (wolf-eating-cooldown wolf) 0)
-  (call-next-method wolf world dt))
+  (call-next-method wolf world dt)
+  (clamp-to-game-area-boundaries wolf))
 
 (defmethod draw-entity ((wolf wolf))
   (with-slots (position velocity color)

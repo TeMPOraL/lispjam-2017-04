@@ -27,9 +27,10 @@ To implement, in order of MVP-importance:
 - [X] better gfx for sheep (instead of triangle)
 - [X] sheep house
 - [X] full sheep that enter stay there
-- [ ] wolves
-- [ ] ship house is off-limits to wolves
+- [X] wolves
+- [X] STRONGER GAME AREA BORDER LIMITS
 - [ ] wolves kill sheep on contact
+- [ ] ship house is off-limits to wolves
 - [ ] points display
 - [ ] time display
 - [ ] wolf packs (flocking behaviour)
