@@ -47,6 +47,24 @@ A game made for [[https://itch.io/jam/lisp-game-jam-2017-easy-mode][Lisp Game Ja
 * Technical
   TBD
 
+* Troubleshooting
+
+** Game doesn't work - crashes, throws exceptions, etc.
+   E-mail me. If you can find =engine.log= file somewhere around the game directory,
+   please send it to me too.
+
+** Game seems not able to find assets
+   Verify your Lisp's working directory is set to root of this repository. In Emacs / SLIME,
+   you can use =,cd= in REPL to change the working directory.
+
+** Game runs slow
+   The code is pretty crappy (happens when writing in a hurry to meet the contest deadline), so it's nowhere
+   near possible peak performance. I might optimize it in the future if there's interest.
+
+   To help me do that, please find and e-mail me the file =perf-report.html=. Also if you're using
+   SBCL, try and run the game with =(ljgame:run-with-profiling)=, and send me the file
+   =sb-sprof.txt=.
+
 * Credits
 
   This game's background was composed with assets from [[https://sharm.itch.io/tiny16][Tiny16]] pack by Sharm.
