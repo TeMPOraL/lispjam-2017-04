@@ -1,0 +1,5 @@
+#+title: Credits
+
+This game's background was composed with assets from [[https://sharm.itch.io/tiny16][Tiny16]] pack by Sharm.
+
+The book [[http://natureofcode.com/]["The Nature of Code"]] turned out to be very helpful in [[http://natureofcode.com/book/chapter-6-autonomous-agents/][designing and implementing the flocking algorithm]].

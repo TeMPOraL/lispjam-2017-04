@@ -1,4 +1,54 @@
-#+title: #:LISPJAM-2017-04-GAME1000
+#+title: Sheeps!
 #+startup: hidestars
 
-A game for Lisp Game Jam.
+A game made for [[https://itch.io/jam/lisp-game-jam-2017-easy-mode][Lisp Game Jam 2017 (Easy Mode)]].
+
+* Overview
+
+  In the game you play as a "dog" whose task is to protect a flock of sheep. The sheep will roam
+  around the gameplay area, looking for food, and trying to avoid wolves. After sheep are fed,
+  you need to secure them by escorting them to the top part of the gameplay area. You need to
+  save at least half of the flock to win a level.
+
+  The game employs a [[https://en.wikipedia.org/wiki/Boids][flocking algorithm]] for both sheep and wolves.
+
+* Installation
+
+  Ensure you have a working Lisp implementation (the game was developed on [[http://www.sbcl.org/][SBCL]], but [[http://ccl.clozure.com/][CCL]] should probably
+  work too) and [[https://www.quicklisp.org/beta/][Quicklisp]] set up.
+
+  Clone this repository, and [[https://github.com/TeMPOraL/parendeck2d][Parendeck2D]]. Ensure both are visible in your Quicklisp's local projects
+  (e.g. by symlinking those repositories in ~/quicklisp/local-projects).
+
+  Start your Lisp from the root directory of this game, and execute =(ql:quickload :lispjam-2017-04-temporal)=.
+  After that, run =(ljgame:run)=.
+
+  I'll add binaries for Windows users when I figure out how to reliably deploy them.
+
+* Gameplay
+
+** Controls
+   - Left, Right - turn the player character
+   - Up - accelerate
+   - Down - slow down
+   - F5 - toggle showing debugging information for flocking algorithm
+   - F6 - toggle showing sight ranges of wolves and sheep
+   - F7 - while holding it, you can use left mouse button to place a sheep, right mouse button to
+     place a wolf, and middle mouse button to place a food pellet
+
+** Mechanics
+   Sheep want to eat food pellets. Eating two will turn the sheep white and enlarge it; this indicates that
+   it is ready to be evacuated.
+
+   Wolves want to eat sheep. You lose the game if wolves eat more than half of your sheep.
+
+   Eating, in both cases, takes time, during which the wolf/sheep won't be moving much.
+
+* Technical
+  TBD
+
+* Credits
+
+  This game's background was composed with assets from [[https://sharm.itch.io/tiny16][Tiny16]] pack by Sharm.
+
+  The book [[http://natureofcode.com/]["The Nature of Code"]] turned out to be very helpful in [[http://natureofcode.com/book/chapter-6-autonomous-agents/][designing and implementing the flocking algorithm]].
