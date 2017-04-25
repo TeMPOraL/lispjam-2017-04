@@ -22,7 +22,8 @@ A game made for [[https://itch.io/jam/lisp-game-jam-2017-easy-mode][Lisp Game Ja
   Clone this repository, and [[https://github.com/TeMPOraL/parendeck2d][Parendeck2D]]. Ensure both are visible in your Quicklisp's local projects
   (e.g. by symlinking those repositories in ~/quicklisp/local-projects).
 
-  Start your Lisp from the root directory of this game, and execute =(ql:quickload :lispjam-2017-04-temporal)=.
+  Start your Lisp from the root directory of this game, and execute =(ql:register-local-projects)= and
+  =(ql:quickload :lispjam-2017-04-temporal)=.
   After that, run =(ljgame:run)=.
 
   I'll add binaries for Windows users when I figure out how to reliably deploy them.
@@ -64,7 +65,7 @@ A game made for [[https://itch.io/jam/lisp-game-jam-2017-easy-mode][Lisp Game Ja
 
 ** Game seems not able to find assets
    Verify your Lisp's working directory is set to root of this repository. In Emacs / SLIME,
-   you can use =,cd= in REPL to change the working directory.
+   you can use ",cd" in REPL to change the working directory.
 
 ** Game runs slow
    The code is pretty crappy (happens when writing in a hurry to meet the contest deadline), so it's nowhere
