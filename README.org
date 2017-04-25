@@ -5,10 +5,10 @@ A game made for [[https://itch.io/jam/lisp-game-jam-2017-easy-mode][Lisp Game Ja
 
 * Overview
 
-  In the game you play as a "dog" whose task is to protect a flock of sheep. The sheep will roam
-  around the gameplay area, looking for food, and trying to avoid wolves. After sheep are fed,
-  you need to secure them by escorting them to the top part of the gameplay area. You need to
-  save at least half of the flock to win a level.
+  In the game you play as a "dog" whose task is to protect and herd a flock of sheep. The sheep will
+  roam around the gameplay area, looking for food, and trying to avoid wolves and your
+  character. After sheep are fed, you need to secure them by escorting them to the top part of the
+  gameplay area. You need to save at least half of the flock to win a level.
 
   The game employs a [[https://en.wikipedia.org/wiki/Boids][flocking algorithm]] for both sheep and wolves.
 
@@ -45,7 +45,14 @@ A game made for [[https://itch.io/jam/lisp-game-jam-2017-easy-mode][Lisp Game Ja
    Eating, in both cases, takes time, during which the wolf/sheep won't be moving much.
 
 * Technical
-  TBD
+  Both sheep and wolves are driven using a flocking algorithm. They'll group together within their
+  respective species, chase food when hungry, run away from danger, and - most importantly - run away
+  from player character. This last thing is what gives you the ability to direct sheep and chase
+  away wolves.
+
+  All entities have limited sight range, so they'll only notice friends, food and danger in close proximity.
+
+  To view the realtime computation performed by entities, use F5 key. To see the sight ranges, use F6 key.
 
 * Troubleshooting
 
