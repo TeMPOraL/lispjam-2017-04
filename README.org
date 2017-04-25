@@ -3,7 +3,7 @@
 
 A game made for [[https://itch.io/jam/lisp-game-jam-2017-easy-mode][Lisp Game Jam 2017 (Easy Mode)]].
 
-[[file:screenshots/screenshot-1.png]]
+[[file:screenshots/screenshot-2.png]]
 
 * Overview
 
